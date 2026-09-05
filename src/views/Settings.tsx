@@ -237,7 +237,10 @@ export function Settings({
   }, [activeVault?.id, activeVault?.type, modelsTabRequested]);
 
   useEffect(() => {
-    if (!hasZoteroLibraryWorkflow && settingsTab === 'library') setSettingsTab('providers');
+    if (!hasZoteroLibraryWorkflow && settingsTab === 'library') {
+      // Preserve a direct navigation target queued by the effect above.
+      setSettingsTab((current) => current === 'library' ? 'providers' : current);
+    }
   }, [hasZoteroLibraryWorkflow, settingsTab]);
   const [importPassword, setImportPassword] = useState('');
   const [showImportPassword, setShowImportPassword] = useState(false);
