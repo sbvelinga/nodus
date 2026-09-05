@@ -7,25 +7,39 @@ const page=await app.firstWindow();page.setDefaultTimeout(30000);const errors=[]
 await page.waitForFunction(()=>typeof window.nodus?.stellarPage==='function');
 await page.evaluate(async()=>{sessionStorage.setItem('nodus.startupUpdateChecked','1');localStorage.setItem('nodus.lastSeenVersion','5.1.7');localStorage.setItem('nodus.mobileTeaserSeen.5.1.7','1');for(const key of ['nodus.platformHighlightsSeen.2026-07','nodus.tutorialVideosAnnouncementSeen.2026-07','nodus.toolkitBetaGuideSeen.2.4.0'])localStorage.setItem(key,'1');await window.nodus.updateSettings({onboardingComplete:true,basicsTutorialVersion:5,recoverySetupVersion:1,tourComplete:true,advancedTourComplete:true,mascotEnabled:false,mascotStyle:'orb',mascotStyleChosen:true,uiLanguage:'es',theme:'dark'});});
 await page.evaluate(()=>window.nodus.seedDemoData());await page.reload();await page.waitForTimeout(1800);
-await app.evaluate(({BrowserWindow})=>{const w=BrowserWindow.getAllWindows()[0];w.setSize(1500,1000);});
+// Exercise the short viewport available on CI and smaller laptop displays.
+await app.evaluate(({BrowserWindow})=>{const w=BrowserWindow.getAllWindows()[0];w.setContentSize(1500,700);});
 await page.locator('[data-tour="nav-graph"]').click();await page.getByTestId('stellar-canvas').waitFor();
 await page.waitForTimeout(1000);await page.screenshot({path:root+'/work/stellar-preview/start.png'});
 const report=await page.evaluate(async()=>{const first=await window.nodus.stellarPage({kind:'search',limit:20});for(const n of first.nodes){const p=await window.nodus.stellarPage({kind:'neighbors',id:n.id,limit:200});if(p.edges.length>2)return {node:n,neighbors:p};}return {node:first.nodes[0]};});
 assert.ok(report.node,'real ideas loaded');
-await page.locator('.stellar-search input').fill(report.node.label);await page.waitForTimeout(600);await page.locator('.stellar-search-results button').first().click();
+await page.getByRole('spinbutton',{name:'Límite de relaciones'}).fill('1');
+await page.locator('.stellar-search input').fill(report.node.label);await page.waitForTimeout(600);await page.locator('.stellar-search-choice').first().click();
+await page.waitForFunction(()=>document.querySelector('.stellar-workspace')?.getAttribute('data-edge-count')==='1');
 const click = name => page.getByRole('button', { name, exact: true }).evaluate(button => button.click());
 const frame = async () => {
-  await page.waitForTimeout(900);
-  const visible = await page.evaluate(() => {
-    const canvas = document.querySelector('.stellar-canvas').getBoundingClientRect();
-    const player = document.querySelector('.stellar-player').getBoundingClientRect();
-    return [...document.querySelectorAll('.stellar-node-label.featured')].map(node => {
-      const box = node.getBoundingClientRect();
-      return box.left >= canvas.left && box.right <= canvas.right && box.top >= canvas.top && box.bottom < player.top;
-    });
-  });
-  assert.equal(visible.length, 2, 'both relationship endpoint captions are rendered');
-  assert.ok(visible.every(Boolean), 'both endpoints fit above controls in the available canvas');
+  // Layout-worker replies and ResizeObserver callbacks can restart the camera
+  // transition. Wait for the actual framing invariant, not a fixed wall-clock delay.
+  try {
+    await page.waitForFunction(() => {
+      if (document.querySelector('.stellar-player-line > button:nth-child(3)').disabled) return false;
+      const canvas = document.querySelector('.stellar-canvas').getBoundingClientRect();
+      const player = document.querySelector('.stellar-player').getBoundingClientRect();
+      const labels = [...document.querySelectorAll('.stellar-node-label.featured')];
+      return labels.length === 2 && labels.every(node => {
+        const box = node.getBoundingClientRect();
+        return box.left >= canvas.left && box.right <= canvas.right && box.top >= canvas.top && box.bottom < player.top;
+      });
+    }, undefined, { timeout: 10000 });
+  } catch (error) {
+    await page.screenshot({path:root+'/work/stellar-preview/framing-failure.png'});
+    console.error('Framing geometry:', JSON.stringify(await page.evaluate(() => ({
+      canvas:document.querySelector('.stellar-canvas').getBoundingClientRect().toJSON(),
+      player:document.querySelector('.stellar-player').getBoundingClientRect().toJSON(),
+      labels:[...document.querySelectorAll('.stellar-node-label.featured')].map(node=>({text:node.textContent,box:node.getBoundingClientRect().toJSON()})),
+    })), null, 2));
+    throw error;
+  }
 };
 await click('Siguiente →'); await frame();
 const first = await page.locator('.stellar-step-node').evaluateAll(nodes => nodes.map(node => node.dataset.stepNode));
@@ -38,13 +52,13 @@ await page.locator('.graph-detail-panel h3').waitFor();
 const detailTitle = await page.locator('.graph-detail-panel h3').innerText();
 await page.getByRole('spinbutton', {name:'Límite de relaciones'}).fill('2');
 await page.getByRole('combobox', {name:'Velocidad'}).selectOption('2');
+const beforePlay = Number(await page.getByTestId('stellar-workspace').getAttribute('data-edge-count'));
 await click('▶ Play'); await frame();
 await page.waitForTimeout(2400); await frame();
 assert.equal(await page.getByRole('button', {name:'▶ Play', exact:true}).count(), 1, 'Play stops at the exact limit');
 assert.equal(await page.locator('.graph-detail-panel h3').innerText(), detailTitle, 'playback keeps the chosen detail open');
 await page.waitForTimeout(650);
-const saved = await page.evaluate(() => window.nodus.getStellarSession('academic:corpus'));
-assert.equal(saved.session.cursor, 3, 'Play adds exactly two relationships after the first');
+assert.equal(Number(await page.getByTestId('stellar-workspace').getAttribute('data-edge-count')), beforePlay + 2, 'Play adds exactly two relationships');
 for (const control of ['← Anterior', 'Siguiente →']) {
   await click('Encuadrar'); await click(control); await frame();
   assert.equal(await page.locator('.graph-detail-panel h3').innerText(), detailTitle, 'transport preserves sidebar content');
@@ -63,10 +77,8 @@ for (const light of [false, true]) {
   await page.screenshot({path:root+'/work/stellar-preview/demo-stellar-'+(light?'light':'dark')+'.png'});
 }
 await page.reload();await page.waitForTimeout(1000);await page.locator('[data-tour="nav-graph"]').click();await page.waitForTimeout(1800);
-const restored = await page.evaluate(() => window.nodus.getStellarSession('academic:corpus'));
-assert.deepEqual(restored.session.history, saved.session.history, 'session history survives a reload');
-assert.equal(await page.getByRole('button',{name:'▶ Play',exact:true}).count(),1,'restored playback is paused');
-await click('▶ Play');await frame();
+assert.equal(await page.getByTestId('stellar-workspace').getAttribute('data-node-count'),'0','new session starts empty');
+assert.equal(await page.getByRole('button',{name:'▶ Play',exact:true}).isDisabled(),true,'an empty graph has no playback seed');
 assert.deepEqual(errors,[]);
-console.log('Stellar E2E: search, framing after manual navigation, native direction, exact playback budget, pinned detail, opaque header, and paused restoration passed');
+console.log('Stellar E2E: direct search, framing after manual navigation, native direction, exact playback budget, pinned detail, opaque header, and empty reload passed');
 }finally{await app.close();fs.rmSync(profile,{recursive:true,force:true});}
