@@ -1,3 +1,4 @@
+import { STELLAR_GRAPH_TRANSLATIONS } from './i18n.stellarGraph';
 import { PROTECT_TRANSLATIONS } from './i18n.protect';
 import { AI_OCR_TRANSLATIONS } from './i18n.aiOcr';
 import { TOOLKIT_APPS_TRANSLATIONS } from './i18n.toolkitApps';
@@ -55,6 +56,7 @@ import { ACADEMIC_TOUR_TRANSLATIONS } from './i18n.academicTour';
  * every non-Spanish interface language.
  */
 export const EN: Record<string, string> = {
+  ...STELLAR_GRAPH_TRANSLATIONS["en"],
   ...ACADEMIC_TOUR_TRANSLATIONS.en,
   ...ADAPTIVE_CONCURRENCY_TRANSLATIONS.en,
   ...DATABASE_DEEP_RESEARCH_TRANSLATIONS.en,
@@ -320,6 +322,9 @@ export const EN: Record<string, string> = {
   'Bóveda cargada.': 'Vault loaded.',
   'Claves API copiadas: {n}.': 'API keys copied: {n}.',
   'En cola': 'Queued',
+  'Cola y tareas': 'Queue and tasks',
+  "Extracción de texto": "Text extraction",
+  'Sin tareas ni colas en curso.': 'No tasks or queues in progress.',
   'Fallido': 'Failed',
   'Cancelado': 'Cancelled',
   'Pausado': 'Paused',
@@ -8595,4 +8600,33 @@ export const EN: Record<string, string> = {
   "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Could not install the update. You can try again.",
   "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "The previous update was not installed. Check for updates to try again.",
   "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Could not download the update. Check your connection and try again.",
+
+  // Spatial argument map.
+  "CARTOGRAFÍA DEL ARGUMENTO": "ARGUMENT CARTOGRAPHY",
+  "Todas las ramas": "All branches",
+  "IDEA CENTRAL": "CENTRAL IDEA",
+  "SIGUE EL HILO": "FOLLOW THE THREAD",
+  "Despliega una rama. Contrasta sus ideas.": "Expand a branch. Compare its ideas.",
+  "{n} ideas visibles": "{n} visible ideas",
+  "Relaciones respecto a la idea de origen": "Relations to the parent idea",
+  "Arrastra para explorar · Rueda para ampliar": "Drag to explore · Scroll to zoom",
+  "Mapa visual": "Visual map",
+  "No se pudo activar la pantalla completa.": "Could not enter full screen.",
+  "Zoom automático": "Auto zoom",
+  "Centrar y ampliar la tarjeta al seleccionarla": "Center and zoom in on the selected card",
+  "Vista anterior": "Previous view",
+  "Recuperar el encuadre anterior sin cerrar las ramas": "Restore the previous view without collapsing branches",
+  "AÑADE IDEAS AL LIENZO": "ADD IDEAS TO THE CANVAS",
+  "Quitar idea del lienzo": "Remove idea from canvas",
+  "Añadir idea al lienzo": "Add idea to canvas",
+  "Grafos abiertos": "Open graphs",
+  "Grafo {n}": "Graph {n}",
+  "Cerrar grafo {n}": "Close graph {n}",
+  "Nuevo grafo": "New graph",
+  "{n} conexiones directas cargadas. Añade otra idea con +.": "{n} direct connections loaded. Add another idea with +.",
+  "Lienzo vacío. Busca una idea para empezar.": "Empty canvas. Search for an idea to get started.",
+  "Idea retirada del lienzo.": "Idea removed from the canvas.",
+  "Quitar todas las ideas y conexiones del lienzo": "Clear all visible ideas and connections",
+  "Relaciones por idea": "Relations per idea",
+  "No se pudieron cargar todas las conexiones. Vuelve a intentarlo.": "Could not load all connections. Please try again.",
 };

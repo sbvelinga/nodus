@@ -1,3 +1,4 @@
+import { STELLAR_GRAPH_TRANSLATIONS } from './i18n.stellarGraph';
 /**
  * French translations keyed by the Spanish source string (see {@link ./i18n}).
  * Key order mirrors {@link ./i18n.en} so the two tables can be diffed side by side.
@@ -56,6 +57,7 @@ import { DATABASE_DEEP_RESEARCH_TRANSLATIONS } from './i18n.databaseDeepResearch
 import { ACADEMIC_TOUR_TRANSLATIONS } from './i18n.academicTour';
 
 export const FR: Record<string, string> = {
+  ...STELLAR_GRAPH_TRANSLATIONS["fr"],
   ...ACADEMIC_TOUR_TRANSLATIONS.fr,
   ...ADAPTIVE_CONCURRENCY_TRANSLATIONS.fr,
   ...DATABASE_DEEP_RESEARCH_TRANSLATIONS.fr,
@@ -2126,6 +2128,9 @@ export const FR: Record<string, string> = {
   'Corrígelo en Ajustes y pulsa': 'Corrigez-le dans les paramètres et cliquez sur',
   'Reanudar': 'Reprendre',
   'Cola': 'File',
+  'Cola y tareas': 'File et tâches',
+  "Extracción de texto": "Extraction de texte",
+  'Sin tareas ni colas en curso.': 'Aucune tâche ni file en cours.',
   'Procesando:': 'Traitement :',
   'Cola en pausa': 'File en pause',
   'En cola…': 'En file d\'attente…',
@@ -8358,4 +8363,33 @@ export const FR: Record<string, string> = {
   "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Impossible d’installer la mise à jour. Vous pouvez réessayer.",
   "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "La mise à jour précédente n’a pas été installée. Recherchez des mises à jour pour réessayer.",
   "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Impossible de télécharger la mise à jour. Vérifiez votre connexion et réessayez.",
+
+  // Spatial argument map.
+  "CARTOGRAFÍA DEL ARGUMENTO": "CARTOGRAPHIE DE L’ARGUMENT",
+  "Todas las ramas": "Toutes les branches",
+  "IDEA CENTRAL": "IDÉE CENTRALE",
+  "SIGUE EL HILO": "SUIVEZ LE FIL",
+  "Despliega una rama. Contrasta sus ideas.": "Déployez une branche. Confrontez ses idées.",
+  "{n} ideas visibles": "{n} idées visibles",
+  "Relaciones respecto a la idea de origen": "Relations avec l’idée parente",
+  "Arrastra para explorar · Rueda para ampliar": "Glissez pour explorer · Molette pour zoomer",
+  "Mapa visual": "Carte visuelle",
+  "No se pudo activar la pantalla completa.": "Impossible de passer en plein écran.",
+  "Zoom automático": "Zoom automatique",
+  "Centrar y ampliar la tarjeta al seleccionarla": "Centrer et agrandir la carte sélectionnée",
+  "Vista anterior": "Vue précédente",
+  "Recuperar el encuadre anterior sin cerrar las ramas": "Rétablir la vue précédente sans replier les branches",
+  "AÑADE IDEAS AL LIENZO": "AJOUTEZ DES IDÉES AU CANEVAS",
+  "Quitar idea del lienzo": "Retirer l’idée du canevas",
+  "Añadir idea al lienzo": "Ajouter l’idée au canevas",
+  "Grafos abiertos": "Graphes ouverts",
+  "Grafo {n}": "Graphe {n}",
+  "Cerrar grafo {n}": "Fermer le graphe {n}",
+  "Nuevo grafo": "Nouveau graphe",
+  "{n} conexiones directas cargadas. Añade otra idea con +.": "{n} connexions directes chargées. Ajoutez une autre idée avec +.",
+  "Lienzo vacío. Busca una idea para empezar.": "Canevas vide. Recherchez une idée pour commencer.",
+  "Idea retirada del lienzo.": "Idée retirée du canevas.",
+  "Quitar todas las ideas y conexiones del lienzo": "Retirer toutes les idées et connexions du canevas",
+  "Relaciones por idea": "Relations par idée",
+  "No se pudieron cargar todas las conexiones. Vuelve a intentarlo.": "Impossible de charger toutes les connexions. Réessayez.",
 };
