@@ -1,20 +1,22 @@
 .model-picker-menu { position: relative; width: 100%; }
 .model-picker-trigger {
   display: flex; width: 100%; min-height: 38px; align-items: center; gap: .5rem;
-  border: 1px solid #404040; border-radius: .5rem; background: #171717; padding: .375rem .65rem;
+  border: 1px solid #404040; border-radius: .5rem;
+  background: #171717; padding: .375rem .65rem;
   color: #e5e5e5; text-align: left; font-family: inherit; font-size: .875rem; line-height: inherit;
   outline: none; cursor: pointer;
 }
 .model-picker-menu.compact .model-picker-trigger { min-height: 31px; font-size: .75rem; }
 .model-picker-trigger:hover { border-color: #525252; background: #1f1f1f; }
-.model-picker-trigger:focus-visible { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.2); }
+.model-picker-trigger:focus-visible { border-color: var(--vault-accent, #6366f1); box-shadow: 0 0 0 2px color-mix(in srgb, var(--vault-accent, #6366f1) 20%, transparent); }
 .model-picker-trigger:disabled { cursor: default; opacity: .5; }
 .model-picker-trigger > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-picker-trigger > svg { flex: 0 0 auto; color: #a3a3a3; }
 .model-picker-options {
-  position: absolute; top: calc(100% + 5px); left: 0; right: 0; z-index: 30;
+  position: fixed; inset: auto; margin: 0; box-sizing: border-box; z-index: 30;
   display: flex; max-height: 230px; min-width: 0; flex-direction: column; overflow: hidden;
-  border: 1px solid #404040; border-radius: .6rem; background: #171717; padding: 4px;
+  border: 1px solid #404040; border-radius: .6rem;
+  background: #171717; padding: 4px;
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
 }
 .model-picker-search {
@@ -23,11 +25,12 @@
 }
 .model-picker-search > svg { position: absolute; left: .65rem; z-index: 1; color: #a3a3a3; pointer-events: none; }
 .model-picker-search > input {
-  box-sizing: border-box; width: 100%; min-width: 0; height: 30px; border: 1px solid #404040;
-  border-radius: .4rem; background: #0f0f0f; padding: .3rem .55rem .3rem 1.8rem;
+  box-sizing: border-box; width: 100%; min-width: 0; height: 30px;
+  border: 1px solid #404040; border-radius: .4rem;
+  background: #0f0f0f; padding: .3rem .55rem .3rem 1.8rem;
   color: #e5e5e5; font: inherit; font-size: .75rem; outline: none;
 }
-.model-picker-search > input:focus { border-color: #6366f1; box-shadow: 0 0 0 2px rgba(99,102,241,.18); }
+.model-picker-search > input:focus { border-color: var(--vault-accent, #6366f1); box-shadow: 0 0 0 2px color-mix(in srgb, var(--vault-accent, #6366f1) 18%, transparent); }
 .model-picker-search > input::placeholder { color: #737373; }
 .model-picker-search > input::-webkit-search-cancel-button { cursor: pointer; filter: invert(.7); }
 .model-picker-list { min-width: 0; overflow-x: hidden; overflow-y: auto; scrollbar-gutter: stable; }
@@ -39,7 +42,7 @@
 .model-picker-list button > span { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .model-picker-list button > svg { flex: 0 0 auto; }
 .model-picker-list button:hover { background: #262626; color: #fff; }
-.model-picker-list button.selected { background: rgba(79,70,229,.2); color: #c7d2fe; }
+.model-picker-list button.selected { background: color-mix(in srgb, var(--vault-accent, #6366f1) 20%, transparent); color: color-mix(in srgb, var(--vault-accent, #6366f1) 35%, white); }
 .model-picker-empty { padding: .6rem; color: #737373; font-size: .75rem; text-align: center; }
 .light .model-picker-trigger { border-color: #d4d4d4; background: #fff; color: #171717; }
 .light .model-picker-trigger:hover { border-color: #a3a3a3; background: #fafafa; }
@@ -50,4 +53,8 @@
 .light .model-picker-search > input::-webkit-search-cancel-button { filter: none; }
 .light .model-picker-list button { color: #404040; }
 .light .model-picker-list button:hover { background: #f5f5f5; color: #171717; }
-.light .model-picker-list button.selected { background: #eef2ff; color: #4338ca; }
+.light .model-picker-list button.selected { background: color-mix(in srgb, var(--vault-accent, #6366f1) 10%, transparent); color: color-mix(in srgb, var(--vault-accent, #6366f1) 75%, #171717); }
+
+.model-picker-options::backdrop { background: transparent; pointer-events: none; }
+.model-picker-list button:disabled { opacity: .5; cursor: not-allowed; }
+.model-picker-list button:focus-visible { outline: 2px solid var(--vault-accent, #6366f1); outline-offset: -2px; }
