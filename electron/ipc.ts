@@ -1,6 +1,9 @@
+import { listChatSkills, saveChatSkill, deleteChatSkill, restoreChatSkills } from './chatSkills';
+import { getChatImageMetadata } from './chatAssets';
+import { originalImagePayloadFromUrl } from './imageProtocol';
 import path from 'node:path';
 import fs from 'node:fs';
-import { ipcMain, BrowserWindow, dialog, app, nativeTheme } from 'electron';
+import { ipcMain, BrowserWindow, dialog, app, nativeTheme, clipboard, nativeImage } from 'electron';
 
 import {
   showImportOpenDialog,
@@ -214,6 +217,7 @@ export function registerIpc(
   checkForUpdates: () => Promise<UpdateCheckResponse>,
   installUpdate: () => Promise<UpdateCheckResponse>,
   updateChannelChanged: (betaUpdates: boolean) => void,
+  getUpdateStatus: () => UpdateCheckResponse | null,
 ): void {
   const context = createIpcContext(getWindow);
   const { h } = context;
@@ -548,6 +552,23 @@ export function registerIpc(
   });
   h('announcements:list', async () => listAnnouncements());
   h('announcements:markRead', async (_e, id: string) => markAnnouncementRead(String(id)));
+  const skillsChanged = (skills: ReturnType<typeof listChatSkills>) => {
+    for (const win of BrowserWindow.getAllWindows()) if (!win.isDestroyed()) win.webContents.send('chatSkills:changed');
+    return skills;
+  };
+  h('chatSkills:list', async () => listChatSkills());
+  h('chatSkills:save', async (_e, skill) => skillsChanged(saveChatSkill(skill)));
+  h('chatSkills:delete', async (_e, id: string) => skillsChanged(deleteChatSkill(id)));
+  h('chatSkills:restore', async () => skillsChanged(restoreChatSkills()));
+  h('chatImages:metadata', async (_e, source: string) => getChatImageMetadata(source));
+  h('chatImages:copy', async (_e, source: string) => {
+    if (!source.startsWith('nodus-image://chat/')) throw new Error('Invalid chat image.');
+    const payload = originalImagePayloadFromUrl(source);
+    if (!payload) throw new Error('The image is no longer available.');
+    const image = nativeImage.createFromBuffer(payload.blob);
+    if (image.isEmpty()) throw new Error('The image could not be copied.');
+    clipboard.writeImage(image);
+  });
   h('nodi:conversations:list', async () => listNodiConversations());
   h('nodi:conversations:get', async (_e, id: string) => getNodiConversation(id));
   h('nodi:conversations:save', async (_e, input) => saveNodiConversation(input));
@@ -906,6 +927,7 @@ export function registerIpc(
 
   h('updates:check', async () => checkForUpdates());
   h('updates:install', async () => installUpdate());
+  h('updates:status', async () => getUpdateStatus());
 
   // Dynamic macOS dock icon. The renderer rasterises a themed, vault-coloured
   // Nodus mark to a PNG data URL and pushes it here; only macOS exposes

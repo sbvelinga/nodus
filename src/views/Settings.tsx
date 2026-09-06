@@ -15,7 +15,6 @@ import type {
   McpServerStatus,
   McpTunnelStatus,
   MigrationRecoverySnapshot,
-  ModelInfo,
   NodusServerConnection,
   NodusServerOverview,
   ReplicaConnectionView,
@@ -23,7 +22,6 @@ import type {
   RecoveryHealth,
   StudyDataOverview,
   SupersededEntry,
-  UpdateProgressEvent,
   VaultSummary,
   VaultType,
 } from '@shared/types';
@@ -39,8 +37,9 @@ import { BrowserSettings } from './settings/BrowserSettings';
 import { LegalDocModal } from '../components/LegalDocModal';
 import { LEGAL_DOCS, type LegalDocId } from '../legalDocs';
 import { confirm } from '../components/feedback';
-import { Icon, PROVIDER_LABELS } from '../components/ui';
+import { Icon } from '../components/ui';
 import { ModelPicker, ModelWithReasoning, SubscriptionQuotaNotice, ExtractionCapabilityNotice } from '../components/ModelPicker';
+import { EmbeddingModelControl } from '../components/EmbeddingModelControl';
 import { GeneralTextModelControl } from '../components/GeneralTextModelControl';
 import { NodiStylePicker } from '../components/nodi/NodiStylePicker';
 import { TutorialVideoGrid } from '../components/TutorialVideos';
@@ -57,8 +56,8 @@ import { TESTIMONY_GROUPS } from '../components/TestimonySidebar';
 import { ACCESS_LEVELS as TESTIMONY_ACCESS_LEVELS, ATTRIBUTION_MODES as TESTIMONY_ATTRIBUTION_MODES } from '@shared/testimonies';
 import { ACCESS_LEVEL_LABEL as TESTIMONY_ACCESS_LEVEL_LABEL, ATTRIBUTION_MODE_LABEL as TESTIMONY_ATTRIBUTION_MODE_LABEL } from '@shared/testimonyLabels';
 import { errorText, t, tx } from '../i18n';
-import { updateStatusMessage } from '../updateStatus';
-import { DEFAULT_EMBEDDING_MODELS, EMBEDDING_PROVIDERS } from '@shared/providers';
+import { canInstallUpdate, installUpdateManually, pendingUpdateVersion, updateStatusMessage } from '../updateStatus';
+import { useUpdateProgress } from '../useUpdateProgress';
 import { ORB_COLOR_CHOICES, orbHue } from '@shared/nodiOrb';
 import { NODI_DEFAULT_SCALE, NODI_SIZE_SCALES } from '@shared/nodiSize';
 import { effectiveSidebarHidden, isViewAllowedForVaultType } from '@shared/vaultTypes';
@@ -82,6 +81,19 @@ const SETTINGS_TABS: { id: SettingsTabId; label: string; icon: string; keywords:
   { id: 'about', label: 'Acerca de Nodus Research', icon: 'info', keywords: 'acerca proyecto codigo abierto open source gratuito privacidad privacy rgpd gdpr datos alumnado inteligencia artificial licencia terceros legal redes sociales social reddit youtube comunidad' },
   { id: 'updates', label: 'Actualizaciones y novedades', icon: 'sync', keywords: 'actualizaciones update actualizar version novedades ultimos cambios latest changes changelog buscar instalar reiniciar beta testers prerelease canal estable' },
 ];
+
+const SETTINGS_TAB_STORAGE_KEY = 'nodus.settingsTab';
+
+function readRememberedSettingsTab(): SettingsTabId {
+  try {
+    const remembered = localStorage.getItem(SETTINGS_TAB_STORAGE_KEY);
+    return SETTINGS_TABS.some((tab) => tab.id === remembered)
+      ? remembered as SettingsTabId
+      : 'providers';
+  } catch {
+    return 'providers';
+  }
+}
 
 const ZOTERO_FREE_VAULT_TYPES = new Set<VaultType>(['testimonios', 'prosopography', 'worldbuilding']);
 
@@ -160,7 +172,7 @@ export function Settings({
   const [syncHasPassphrase, setSyncHasPassphrase] = useState(true);
   const [importSyncPassphrase, setImportSyncPassphrase] = useState('');
   const [importSyncPromptOpen, setImportSyncPromptOpen] = useState(false);
-  const [settingsTab, setSettingsTab] = useState<SettingsTabId>('providers');
+  const [settingsTab, setSettingsTab] = useState<SettingsTabId>(readRememberedSettingsTab);
   const [settingsQuery, setSettingsQuery] = useState('');
   const [openLegalDoc, setOpenLegalDoc] = useState<LegalDocId | null>(null);
   // Reset-graph flow: a confirm() dialog, then a modal that requires typing a
@@ -170,7 +182,8 @@ export function Settings({
   const [resetting, setResetting] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-  const [updateProgress, setUpdateProgress] = useState<UpdateProgressEvent | null>(null);
+  const [updateProgress, setUpdateProgress] = useUpdateProgress();
+  const [requestingInstall, setRequestingInstall] = useState(false);
   const [confirmBetaUpdates, setConfirmBetaUpdates] = useState(false);
   const [confirmReindex, setConfirmReindex] = useState(false);
   const [pendingModelSettingsMode, setPendingModelSettingsMode] = useState<AppSettings['modelSettingsMode'] | null>(null);
@@ -184,6 +197,14 @@ export function Settings({
   const integrationsTabRequested = settingsTabRequested('integrations', settingsTab, settingsQuery);
   const modelsTabRequested = settingsTabRequested('models', settingsTab, settingsQuery);
   const serverTabRequested = settingsTabRequested('server', settingsTab, settingsQuery);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(SETTINGS_TAB_STORAGE_KEY, settingsTab);
+    } catch {
+      // Settings should remain usable when storage is unavailable or blocked.
+    }
+  }, [settingsTab]);
 
   useEffect(() => {
     void window.nodus.getAiConcurrencySnapshot().then(setAiConcurrency);
@@ -216,7 +237,10 @@ export function Settings({
   }, [activeVault?.id, activeVault?.type, modelsTabRequested]);
 
   useEffect(() => {
-    if (!hasZoteroLibraryWorkflow && settingsTab === 'library') setSettingsTab('providers');
+    if (!hasZoteroLibraryWorkflow && settingsTab === 'library') {
+      // Preserve a direct navigation target queued by the effect above.
+      setSettingsTab((current) => current === 'library' ? 'providers' : current);
+    }
   }, [hasZoteroLibraryWorkflow, settingsTab]);
   const [importPassword, setImportPassword] = useState('');
   const [showImportPassword, setShowImportPassword] = useState(false);
@@ -279,12 +303,10 @@ export function Settings({
   const [mcpCopied, setMcpCopied] = useState<'url' | 'token' | null>(null);
 
   useEffect(() => {
-    return window.nodus.onUpdateProgress((event) => {
-      setUpdateProgress(event);
-      setUpdateMessage(updateStatusMessage(event));
-      setCheckingUpdate(event.status === 'checking');
-    });
-  }, []);
+    if (!updateProgress) return;
+    setUpdateMessage(updateStatusMessage(updateProgress));
+    setCheckingUpdate(updateProgress.status === 'checking');
+  }, [updateProgress, settings.uiLanguage]);
 
   useEffect(() => {
     if (!dataTabRequested) return;
@@ -530,15 +552,20 @@ export function Settings({
       const result = await window.nodus.checkForUpdates();
       setUpdateProgress({ ...result, at: new Date().toISOString() });
       setUpdateMessage(updateStatusMessage(result));
+    } catch {
+      setUpdateProgress((current) => ({ status: 'error', errorCode: 'update-check-failed', message: '', downloadedVersion: pendingUpdateVersion(current), version: current?.version, at: new Date().toISOString() }));
     } finally {
       setCheckingUpdate(false);
     }
   };
 
   const installUpdate = async () => {
-    const result = await window.nodus.installUpdate();
-    setUpdateProgress({ ...result, at: new Date().toISOString() });
+    if (requestingInstall) return;
+    setRequestingInstall(true);
+    const result = await installUpdateManually(updateProgress);
+    setUpdateProgress(result);
     setUpdateMessage(updateStatusMessage(result));
+    setRequestingInstall(false);
   };
 
   const enableBetaUpdates = async () => {
@@ -790,7 +817,7 @@ export function Settings({
   const updateBusy = updateProgress?.status === 'downloading'
     || updateProgress?.status === 'backing-up'
     || updateProgress?.status === 'installing';
-  const updateDownloaded = updateProgress?.status === 'downloaded';
+  const updateDownloaded = canInstallUpdate(updateProgress);
   const normalizedSettingsQuery = normalizeSettingsText(settingsQuery);
   const settingsSearchActive = normalizedSettingsQuery.length > 0;
   const visibleSettingsSection = (tab: SettingsTabId, title: string, keywords: string): boolean => {
@@ -1767,8 +1794,8 @@ export function Settings({
             </div>
             <div className="flex gap-2">
               {updateDownloaded && (
-                <button className="btn btn-primary" onClick={installUpdate}>
-                  <Icon name="refresh" /> {t('Reiniciar')}
+                <button className="btn btn-primary" onClick={installUpdate} disabled={requestingInstall}>
+                  <Icon name="refresh" /> {t('Instalar y reiniciar')}
                 </button>
               )}
               <button className={ABOUT_ACTION_BUTTON_CLASS} onClick={checkForUpdates} disabled={checkingUpdate || updateBusy}>
@@ -3026,27 +3053,27 @@ export function Settings({
                 <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-neutral-500">{t('Ajustes avanzados comunes')}</h3>
                 {/* The four selectors below drive the scan pipeline: one run covers a
                     whole corpus, so a subscription plan's quota is the real limit. */}
-                <Row label={t('Extracción de temas, ideas y evidencias')} hint={t('Extrae temas, ideas, evidencias y relaciones cuando Nodus analiza el corpus.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.extractionModel} onChange={(extractionModel) => void patch({ extractionModel })} emptyLabel="Seleccionar modelo" requireExtraction /></Row>
+                <Row label={t('Extracción de temas, ideas y evidencias')} hint={t('Extrae temas, ideas, evidencias y relaciones cuando Nodus analiza el corpus.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.extractionModel} onChange={(extractionModel) => void patch({ extractionModel })} emptyLabel="Seleccionar modelo" requireExtraction menu /></Row>
                 <ExtractionCapabilityNotice model={settings.extractionModel} />
                 <SubscriptionQuotaNotice model={settings.extractionModel} />
-                <Row label={t('Visión y OCR de imágenes')} hint={t('Interpreta imágenes y páginas escaneadas y obtiene su texto cuando hace falta.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.visionModel} onChange={(visionModel) => void patch({ visionModel })} emptyLabel="Seleccionar modelo" /></Row>
+                <Row label={t('Visión y OCR de imágenes')} hint={t('Interpreta imágenes y páginas escaneadas y obtiene su texto cuando hace falta.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.visionModel} onChange={(visionModel) => void patch({ visionModel })} emptyLabel="Seleccionar modelo" menu /></Row>
                 <SubscriptionQuotaNotice model={settings.visionModel} />
-                <Row label={t('Resúmenes de obras')} hint={t('Redacta resúmenes breves de cada obra para orientar la navegación y la recuperación.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.summaryModel} onChange={(summaryModel) => void patch({ summaryModel })} emptyLabel="Seleccionar modelo" requiredCapability="summary" /></Row>
+                <Row label={t('Resúmenes de obras')} hint={t('Redacta resúmenes breves de cada obra para orientar la navegación y la recuperación.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.summaryModel} onChange={(summaryModel) => void patch({ summaryModel })} emptyLabel="Seleccionar modelo" requiredCapability="summary" menu /></Row>
                 <SubscriptionQuotaNotice model={settings.summaryModel} />
                 {activeVault?.type === 'academic' && <>
-                  <Row label={t('Comprensión de documentos completos')} hint={t('Analiza todas las secciones y sintetiza la arquitectura global de cada obra.')}><ModelWithReasoning settings={settings} value={settings.documentProfileModel} onChange={(documentProfileModel) => void patch({ documentProfileModel })} emptyLabel="Usar modelo de resúmenes" requiredCapability="documentProfile" /></Row>
+                  <Row label={t('Comprensión de documentos completos')} hint={t('Analiza todas las secciones y sintetiza la arquitectura global de cada obra.')}><ModelWithReasoning settings={settings} value={settings.documentProfileModel} onChange={(documentProfileModel) => void patch({ documentProfileModel })} emptyLabel="Usar modelo de resúmenes" requiredCapability="documentProfile" menu /></Row>
                   <ExtractionCapabilityNotice model={settings.documentProfileModel ?? settings.summaryModel} />
                   <SubscriptionQuotaNotice model={settings.documentProfileModel ?? settings.summaryModel} />
-                  <Row label={t('Auditor de fichas documentales')} hint={t('Revisa soporte, cobertura y fidelidad antes de publicar una versión nueva.')}><ModelWithReasoning settings={settings} value={settings.documentAuditModel} onChange={(documentAuditModel) => void patch({ documentAuditModel })} emptyLabel="Usar modelo de comprensión documental" requiredCapability="documentProfile" /></Row>
+                  <Row label={t('Auditor de fichas documentales')} hint={t('Revisa soporte, cobertura y fidelidad antes de publicar una versión nueva.')}><ModelWithReasoning settings={settings} value={settings.documentAuditModel} onChange={(documentAuditModel) => void patch({ documentAuditModel })} emptyLabel="Usar modelo de comprensión documental" requiredCapability="documentProfile" menu /></Row>
                   <SubscriptionQuotaNotice model={settings.documentAuditModel ?? settings.documentProfileModel ?? settings.summaryModel} />
                 </>}
-                <Row label={t('Fusión y deduplicación')} hint={t('Combina resultados equivalentes y elimina duplicados sin perder su evidencia.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.fusionModel} onChange={(fusionModel) => void patch({ fusionModel })} emptyLabel="Seleccionar modelo" requiredCapability="fusion" /></Row>
+                <Row label={t('Fusión y deduplicación')} hint={t('Combina resultados equivalentes y elimina duplicados sin perder su evidencia.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.fusionModel} onChange={(fusionModel) => void patch({ fusionModel })} emptyLabel="Seleccionar modelo" requiredCapability="fusion" menu /></Row>
                 <ExtractionCapabilityNotice model={settings.fusionModel} />
                 <SubscriptionQuotaNotice model={settings.fusionModel} />
-                <Row label={t('Relaciones semánticas')} hint={t('Valida pares de ideas y genera las relaciones del grafo.')}><ModelWithReasoning allowEmpty settings={settings} value={settings.relationModel} onChange={(relationModel) => void patch({ relationModel })} emptyLabel="Usar modelo de fusión" requiredCapability="fusion" /></Row>
+                <Row label={t('Relaciones semánticas')} hint={t('Valida pares de ideas y genera las relaciones del grafo.')}><ModelWithReasoning allowEmpty settings={settings} value={settings.relationModel} onChange={(relationModel) => void patch({ relationModel })} emptyLabel="Usar modelo de fusión" requiredCapability="fusion" menu /></Row>
                 <ExtractionCapabilityNotice model={settings.relationModel ?? settings.fusionModel} />
                 <SubscriptionQuotaNotice model={settings.relationModel ?? settings.fusionModel} />
-                <Row label={t('Asistente Nodi')} hint={t('Responde en el asistente Nodi y usa el contexto de la vista cuando lo autorizas.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.nodiModel} onChange={(nodiModel) => void patch({ nodiModel })} emptyLabel="Seleccionar modelo" /></Row>
+                <Row label={t('Asistente Nodi')} hint={t('Responde en el asistente Nodi y usa el contexto de la vista cuando lo autorizas.')}><ModelWithReasoning allowEmpty={false} settings={settings} value={settings.nodiModel} onChange={(nodiModel) => void patch({ nodiModel })} emptyLabel="Seleccionar modelo" menu /></Row>
               </div>
               <VaultModelOverrides settings={settings} vaultType={activeVault?.type ?? 'academic'} vaultName={activeVault?.name ?? t('Vault actual')} patch={patch} />
             </>}
@@ -3836,7 +3863,7 @@ function VaultModelOverrides({ settings, vaultType, vaultName, patch }: {
     <p className="mb-3 mt-1 text-xs text-neutral-600">{t('Estos cambios no modifican los demás vaults.')}</p>
     {vaultType === 'estudio' ? <StudyVaultModelOverrides settings={settings} patch={patch} /> : <div className="space-y-3">
       {keys.map((key) => <Row key={key} label={t(VAULT_MODEL_FIELDS[key])} hint={t(VAULT_MODEL_HINTS[key])}>
-        <ModelWithReasoning allowEmpty={false} settings={settings} value={settings[key] ?? null} onChange={(model) => void patch({ [key]: model })} emptyLabel="Seleccionar modelo" />
+        <ModelWithReasoning allowEmpty={false} settings={settings} value={settings[key] ?? null} onChange={(model) => void patch({ [key]: model })} emptyLabel="Seleccionar modelo" menu />
       </Row>)}
     </div>}
   </div>;
@@ -3862,8 +3889,8 @@ function StudyVaultModelOverrides({ settings, patch }: {
         {t(item.label)}
         <span className="mt-0.5 block text-[10px] leading-4 text-neutral-500">{t(item.hint)}</span>
       </span>
-      <ModelWithReasoning compact allowEmpty={false} settings={settings} value={settings[item.key]} onChange={(model) => void patch({ [item.key]: model })} emptyLabel="Seleccionar modelo" />
-      <ModelWithReasoning compact settings={settings} value={settings.studyAiFallbackModels[item.task] ?? null} onChange={(model) => void patch({ studyAiFallbackModels: { ...settings.studyAiFallbackModels, [item.task]: model } })} emptyLabel="Sin modelo alternativo" />
+      <ModelWithReasoning compact allowEmpty={false} settings={settings} value={settings[item.key]} onChange={(model) => void patch({ [item.key]: model })} emptyLabel="Seleccionar modelo" menu />
+      <ModelWithReasoning compact settings={settings} value={settings.studyAiFallbackModels[item.task] ?? null} onChange={(model) => void patch({ studyAiFallbackModels: { ...settings.studyAiFallbackModels, [item.task]: model } })} emptyLabel="Sin modelo alternativo" menu />
     </div>)}
   </div>;
 }
@@ -3948,95 +3975,6 @@ function SettingsTabButton({
   );
 }
 
-function EmbeddingModelControl({
-  settings,
-  onEmbeddingChange,
-}: {
-  settings: AppSettings;
-  onEmbeddingChange: (provider: EmbeddingProvider, model: string) => void;
-}) {
-  const [models, setModels] = useState<ModelInfo[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const provider = settings.embeddingProvider ?? 'openai';
-  const [modelInput, setModelInput] = useState(settings.embeddingModel);
-
-  useEffect(() => setModelInput(settings.embeddingModel), [settings.embeddingModel]);
-
-  const commitModelInput = () => {
-    const model = modelInput.trim() || DEFAULT_EMBEDDING_MODELS[provider];
-    setModelInput(model);
-    if (model !== settings.embeddingModel) onEmbeddingChange(provider, model);
-  };
-
-  const setProvider = (next: EmbeddingProvider) => {
-    setModels(null);
-    setError(null);
-    onEmbeddingChange(next, DEFAULT_EMBEDDING_MODELS[next]);
-  };
-
-  const loadModels = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setModels(await window.nodus.listEmbeddingModels(provider));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const shown = (models ?? []).slice(0, 300);
-
-  return (
-    <div className="w-full max-w-3xl space-y-2">
-      <div className="grid gap-2 lg:grid-cols-[11rem_minmax(13rem,1fr)_auto]">
-        <select className="input w-full" value={provider} onChange={(e) => setProvider(e.target.value as EmbeddingProvider)}>
-          {EMBEDDING_PROVIDERS.map((p) => (
-            <option key={p} value={p}>
-              {PROVIDER_LABELS[p]}
-            </option>
-          ))}
-        </select>
-        <input
-          className="input w-full min-w-0"
-          value={modelInput}
-          onChange={(e) => setModelInput(e.target.value)}
-          onBlur={commitModelInput}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-          placeholder={DEFAULT_EMBEDDING_MODELS[provider]}
-        />
-        <button className="btn btn-ghost justify-center border border-neutral-700" onClick={loadModels} disabled={loading}>
-          {loading ? t('Cargando…') : t('Cargar modelos')}
-        </button>
-      </div>
-      {models && (
-        <select
-          className="input w-full"
-          value={settings.embeddingModel}
-          onChange={(e) => onEmbeddingChange(provider, e.target.value)}
-        >
-          {!shown.some((m) => m.id === settings.embeddingModel) && (
-            <option value={settings.embeddingModel}>{settings.embeddingModel}</option>
-          )}
-          {shown.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name ? `${m.name} · ${m.id}` : m.id}
-            </option>
-          ))}
-        </select>
-      )}
-      {error && <div className="text-xs text-red-400">{error}</div>}
-      <p className="text-xs text-neutral-500">
-        {t('OpenRouter acepta IDs como baai/bge-m3; si escribes BAAI:bge-m3 se normaliza automáticamente.')}
-      </p>
-      <p className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs leading-5 text-amber-200">
-        {t('Si cambias de modelo de embeddings, los vectores anteriores no servirán con el nuevo modelo y tendrás que reindexar.')}
-      </p>
-    </div>
-  );
-}
 
 /**
  * Versions a sync merge discarded, and the way back.

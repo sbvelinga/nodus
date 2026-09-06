@@ -6,11 +6,7 @@ import type { NotionImportReport } from '@shared/notionImport';
 import { FeedbackModal } from './views/FeedbackModal';
 import { RoadmapFeedbackModal, type RoadmapTopicKey } from './views/RoadmapFeedbackModal';
 import { RoadmapModal } from './views/RoadmapModal';
-import { QueueBar } from './components/QueueBar';
-import { EmbeddingProgressBar } from './components/EmbeddingProgressBar';
-import { PassageProgressBar } from './components/PassageProgressBar';
-import { ZoteroImportProgressBar } from './components/ZoteroImportProgressBar';
-import { DocumentIndexProgressBar } from './components/DocumentIndexProgressBar';
+import { QueuePanel, useQueueActivity } from './components/QueuePanel';
 import { VaultSwitcher, vaultTypeIcon, vaultTypeLabel } from './components/VaultSwitcher';
 import { ServerInbox } from './components/ServerInbox';
 import { unreadServerInboxGroupCount } from './serverInboxGrouping';
@@ -44,6 +40,9 @@ import { hasPendingWhatsNew, WhatsNewModal } from './components/WhatsNewModal';
 import { TutorialVideosUpdateTour } from './components/TutorialVideosGuide';
 import { PlatformHighlightsUpdateTour } from './components/PlatformHighlightsGuide';
 import { ToolkitBetaUpdateTour } from './components/ToolkitBetaGuide';
+import { useUpdateProgress } from './useUpdateProgress';
+import { pendingUpdateVersion, updateInstallBusy } from './updateStatus';
+import { UpdateReadyNotice } from './components/UpdateReadyNotice';
 import { StartupUpdateModal } from './components/StartupUpdateModal';
 import { AiModelRequiredModal } from './components/AiModelRequiredModal';
 import { MobileTeaserGuide } from './components/MobileTeaserGuide';
@@ -131,6 +130,7 @@ function HeaderAction({
   vaultTrigger = false,
   inboxTrigger = false,
   notificationsTrigger = false,
+  queueTrigger = false,
 }: {
   icon: string;
   label: string;
@@ -147,6 +147,8 @@ function HeaderAction({
   inboxTrigger?: boolean;
   /** Same, for the notifications panel. */
   notificationsTrigger?: boolean;
+  /** Same, for the queue panel. */
+  queueTrigger?: boolean;
 }) {
   return (
     <HoverLabelButton
@@ -154,6 +156,7 @@ function HeaderAction({
       data-vault-trigger={vaultTrigger ? '' : undefined}
       data-inbox-trigger={inboxTrigger ? '' : undefined}
       data-notifications-trigger={notificationsTrigger ? '' : undefined}
+      data-queue-trigger={queueTrigger ? '' : undefined}
       icon={icon}
       label={label}
       title={title}
@@ -191,6 +194,10 @@ export function App() {
   // Set once the startup update check is done with the screen, so the one-time Nodi
   // choice can queue up behind it instead of fighting it for the foreground.
   const [updateSettled, setUpdateSettled] = useState(false);
+  const [updateProgress, setUpdateProgress] = useUpdateProgress();
+  const [deferredUpdate, setDeferredUpdate] = useState<string | null>(null);
+  const readyVersion = pendingUpdateVersion(updateProgress);
+  const updateNoticeKey = readyVersion ? `${readyVersion}${updateProgress?.errorCode ?? ''}` : null;
   // Whether this RUN began before the essential guide had ever been completed — i.e.
   // whether the person at the keyboard is meeting Nodus for the first time. Captured
   // from the first settings read and never recomputed, because both flags the
@@ -271,6 +278,10 @@ export function App() {
   const [inbox, setInbox] = useState<ServerInboxEntry[]>([]);
   // The notification centre. Same two lists Nodi shows, reachable without Nodi.
   const [notificationsAnchor, setNotificationsAnchor] = useState<HTMLElement | null>(null);
+  // Queue and task progress, relocated from the bottom strip into its own dropdown.
+  const [queueAnchor, setQueueAnchor] = useState<HTMLElement | null>(null);
+  const queueActivity = useQueueActivity();
+  const queueLive = queueActivity.live;
   const [notifications, setNotifications] = useState<NodiNotification[]>([]);
   const [refreshingNotifications, setRefreshingNotifications] = useState(false);
   const {
@@ -301,6 +312,10 @@ export function App() {
   );
   const toggleInbox = useCallback(
     (el: HTMLElement) => setInboxAnchor((cur) => (cur === el ? null : el)),
+    []
+  );
+  const toggleQueue = useCallback(
+    (el: HTMLElement) => setQueueAnchor((cur) => (cur === el ? null : el)),
     []
   );
   // Opening the panel clears the ACTIVITY feed only — "I have seen these" is all that
@@ -1484,6 +1499,28 @@ export function App() {
             onClick={() => void toggleTheme()}
             dataTour="theme-toggle"
           />
+          {readyVersion && <HeaderAction
+            icon="download"
+            label={updateProgress?.status === 'backing-up' ? t('Protegiendo tus datos') : updateInstallBusy(updateProgress) ? t('Instalando actualización') : t('Actualización lista')}
+            title={t('Actualización lista')}
+            showLabel
+            onClick={() => setDeferredUpdate(null)}
+          />}
+          {/* Queue and task progress, moved here from the bottom strip: same dropdown
+              treatment as the notification centre, with a live-work badge. */}
+          <span className="relative inline-flex">
+            <HeaderAction
+              dataTour="queue"
+              icon="clock"
+              label={t('Cola y tareas')}
+              title={queueActivity.attention ? `${t('Cola y tareas')} · ${t('Error')}` : t('Cola y tareas')}
+              queueTrigger
+              onClick={(e) => toggleQueue(e.currentTarget)}
+            />
+            {(queueLive > 0 || queueActivity.attention) && (
+              <span className={`header-action-badge ${queueActivity.attention ? '!bg-red-600 !text-white' : ''}`}>{queueActivity.attention && queueLive === 0 ? '!' : queueLive > 9 ? '9+' : queueLive}</span>
+            )}
+          </span>
           {/* The notification centre, reachable whether or not Nodi is enabled — turning
               the mascot off used to take the only way to read these with it. */}
           <span className="relative inline-flex">
@@ -1546,7 +1583,22 @@ export function App() {
           captureBrowserOverlaySnapshot={captureNotificationsBrowserSnapshot}
           setBrowserOverlayVisible={setNotificationsBrowserOverlayVisible}
         />
+
+        <QueuePanel
+          activity={queueActivity}
+          anchorEl={queueAnchor}
+          onClose={() => setQueueAnchor(null)}
+          captureBrowserOverlaySnapshot={captureNotificationsBrowserSnapshot}
+          setBrowserOverlayVisible={setNotificationsBrowserOverlayVisible}
+        />
       </header>
+
+      {updateSettled && updateProgress && updateNoticeKey && deferredUpdate !== updateNoticeKey && <UpdateReadyNotice
+        update={updateProgress}
+        onUpdate={setUpdateProgress}
+        onLater={() => setDeferredUpdate(updateNoticeKey)}
+        onRecovery={() => { void window.nodus.updateSettings({ recoverySetupVersion: 0 }).then(setSettings); }}
+      />}
 
       {settings.demoMode && (
         <div className="flex items-center gap-3 px-4 py-1.5 bg-amber-100 border-b border-amber-300 text-amber-800 text-xs dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300">
@@ -1863,14 +1915,6 @@ export function App() {
         </ContinuityProvider>
       </div>
 
-      <div data-tour="queue">
-        <QueueBar />
-        <ZoteroImportProgressBar />
-        <DocumentIndexProgressBar />
-        <EmbeddingProgressBar />
-        <PassageProgressBar />
-      </div>
-
       <FeedbackHost />
       <PrivacyRequestHost />
       <BrowserConnectorPairingRequestHost />
@@ -2103,6 +2147,7 @@ export function App() {
           settings={settings}
           activeVaultType={activeVault?.type ?? null}
           onSettled={() => setUpdateSettled(true)}
+          onDefer={(version) => setDeferredUpdate(version)}
         />
       )}
 

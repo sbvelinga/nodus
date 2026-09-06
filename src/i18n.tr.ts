@@ -1,3 +1,5 @@
+import { CHAT_SKILLS_TRANSLATIONS } from './i18n.chatSkills';
+import { STELLAR_GRAPH_TRANSLATIONS } from './i18n.stellarGraph';
 import { PROTECT_TRANSLATIONS } from './i18n.protect';
 import { AI_OCR_TRANSLATIONS } from './i18n.aiOcr';
 import { TOOLKIT_APPS_TRANSLATIONS } from './i18n.toolkitApps';
@@ -51,6 +53,8 @@ import { ACADEMIC_TOUR_TRANSLATIONS } from './i18n.academicTour';
 
 /** Complete static Turkish interface table; coverage prohibits runtime fallbacks. */
 export const TR: Record<string, string> = {
+  ...CHAT_SKILLS_TRANSLATIONS['tr'],
+  ...STELLAR_GRAPH_TRANSLATIONS["tr"],
   ...ACADEMIC_TOUR_TRANSLATIONS.tr,
   ...ADAPTIVE_CONCURRENCY_TRANSLATIONS.tr,
   ...DATABASE_DEEP_RESEARCH_TRANSLATIONS.tr,
@@ -2291,6 +2295,9 @@ export const TR: Record<string, string> = {
   "Corrígelo en Ajustes y pulsa": "Ayarlar'da düzeltin ve tuşuna basın.",
   "Reanudar": "Devam et",
   "Cola": "Sıra",
+  "Cola y tareas": "Kuyruk ve görevler",
+  "Extracción de texto": "Metin çıkarma",
+  "Sin tareas ni colas en curso.": "Devam eden görev veya kuyruk yok.",
   "Procesando:": "İşleme:",
   "Cola en pausa": "Duraklatılan sıra",
   "En cola…": "Sırada…",
@@ -8110,4 +8117,40 @@ export const TR: Record<string, string> = {
   "Quitar modelo": "Modeli kaldır",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "Sunucu model yayımlamıyor ve henüz hiçbirini yazmadınız.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Bu sağlayıcı metin üretir, gömme (embedding) üretmez. Anlamsal arama için Ayarlar’dan başka bir sağlayıcı seçin.",
+  "Instalar y reiniciar": "Yükle ve yeniden başlat",
+  "Más tarde": "Daha sonra",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "{version} güncellemesi hazır. İstediğiniz zaman yükleyip yeniden başlatabilirsiniz.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "Çalışmaya devam edebilirsiniz. Nodus yalnızca güncellemeyi yüklemeyi seçtiğinizde yeniden başlatılır.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Güncelleme yüklenemedi. Yeniden deneyebilirsiniz.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "Önceki güncelleme yüklenmedi. Yeniden denemek için güncellemeleri kontrol edin.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Güncelleme indirilemedi. Bağlantınızı kontrol edip yeniden deneyin.",
+
+  // Spatial argument map.
+  "CARTOGRAFÍA DEL ARGUMENTO": "ARGÜMAN HARİTASI",
+  "Todas las ramas": "Tüm dallar",
+  "IDEA CENTRAL": "MERKEZ FİKİR",
+  "SIGUE EL HILO": "İZİ TAKİP ET",
+  "Despliega una rama. Contrasta sus ideas.": "Bir dalı aç. Fikirlerini karşılaştır.",
+  "{n} ideas visibles": "{n} görünür fikir",
+  "Relaciones respecto a la idea de origen": "Üst fikirle ilişkiler",
+  "Arrastra para explorar · Rueda para ampliar": "Keşfetmek için sürükle · Yakınlaştırmak için kaydır",
+  "Mapa visual": "Görsel harita",
+  "No se pudo activar la pantalla completa.": "Tam ekran etkinleştirilemedi.",
+  "Zoom automático": "Otomatik yakınlaştırma",
+  "Centrar y ampliar la tarjeta al seleccionarla": "Seçilen kartı ortala ve yakınlaştır",
+  "Vista anterior": "Önceki görünüm",
+  "Recuperar el encuadre anterior sin cerrar las ramas": "Dalları kapatmadan önceki görünümü geri getir",
+  "AÑADE IDEAS AL LIENZO": "TUVALE FİKİR EKLE",
+  "Quitar idea del lienzo": "Fikri tuvalden kaldır",
+  "Añadir idea al lienzo": "Fikri tuvale ekle",
+  "Grafos abiertos": "Açık graflar",
+  "Grafo {n}": "Graf {n}",
+  "Cerrar grafo {n}": "Graf {n} kapat",
+  "Nuevo grafo": "Yeni graf",
+  "{n} conexiones directas cargadas. Añade otra idea con +.": "{n} doğrudan bağlantı yüklendi. + ile başka bir fikir ekle.",
+  "Lienzo vacío. Busca una idea para empezar.": "Tuval boş. Başlamak için bir fikir ara.",
+  "Idea retirada del lienzo.": "Fikir tuvalden kaldırıldı.",
+  "Quitar todas las ideas y conexiones del lienzo": "Tuvaldeki tüm fikirleri ve bağlantıları kaldır",
+  "Relaciones por idea": "Fikir başına ilişki",
+  "No se pudieron cargar todas las conexiones. Vuelve a intentarlo.": "Tüm bağlantılar yüklenemedi. Tekrar dene.",
 };

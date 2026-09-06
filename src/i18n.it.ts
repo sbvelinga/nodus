@@ -1,3 +1,5 @@
+import { CHAT_SKILLS_TRANSLATIONS } from './i18n.chatSkills';
+import { STELLAR_GRAPH_TRANSLATIONS } from './i18n.stellarGraph';
 import { PROTECT_TRANSLATIONS } from './i18n.protect';
 import { AI_OCR_TRANSLATIONS } from './i18n.aiOcr';
 import { TOOLKIT_APPS_TRANSLATIONS } from './i18n.toolkitApps';
@@ -51,6 +53,8 @@ import { ACADEMIC_TOUR_TRANSLATIONS } from './i18n.academicTour';
 
 /** Complete static Italian interface table; coverage prohibits runtime fallbacks. */
 export const IT: Record<string, string> = {
+  ...CHAT_SKILLS_TRANSLATIONS['it'],
+  ...STELLAR_GRAPH_TRANSLATIONS["it"],
   ...ACADEMIC_TOUR_TRANSLATIONS.it,
   ...ADAPTIVE_CONCURRENCY_TRANSLATIONS.it,
   ...DATABASE_DEEP_RESEARCH_TRANSLATIONS.it,
@@ -1907,6 +1911,9 @@ export const IT: Record<string, string> = {
   "Corrígelo en Ajustes y pulsa": "Correggilo in Impostazioni e fai clic",
   "Reanudar": "Riprendi",
   "Cola": "Coda",
+  "Cola y tareas": "Coda e attività",
+  "Extracción de texto": "Estrazione del testo",
+  "Sin tareas ni colas en curso.": "Nessuna attività o coda in corso.",
   "Procesando:": "Elaborazione:",
   "Cola en pausa": "Coda in pausa",
   "En cola…": "In coda...",
@@ -7765,4 +7772,40 @@ export const IT: Record<string, string> = {
   "Quitar modelo": "Rimuovi modello",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "Il server non pubblica modelli e non ne hai ancora scritto nessuno.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Questo fornitore genera testo, non embedding. Per la ricerca semantica scegli un altro fornitore nelle Impostazioni.",
+  "Instalar y reiniciar": "Installa e riavvia",
+  "Más tarde": "Più tardi",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "L’aggiornamento {version} è pronto. Puoi installarlo e riavviare quando vuoi.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "Puoi continuare a lavorare. Nodus si riavvierà solo quando sceglierai di installare l’aggiornamento.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Impossibile installare l’aggiornamento. Puoi riprovare.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "L’aggiornamento precedente non è stato installato. Cerca aggiornamenti per riprovare.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Impossibile scaricare l’aggiornamento. Controlla la connessione e riprova.",
+
+  // Spatial argument map.
+  "CARTOGRAFÍA DEL ARGUMENTO": "CARTOGRAFIA DELL’ARGOMENTO",
+  "Todas las ramas": "Tutti i rami",
+  "IDEA CENTRAL": "IDEA CENTRALE",
+  "SIGUE EL HILO": "SEGUI IL FILO",
+  "Despliega una rama. Contrasta sus ideas.": "Espandi un ramo. Confronta le sue idee.",
+  "{n} ideas visibles": "{n} idee visibili",
+  "Relaciones respecto a la idea de origen": "Relazioni con l’idea di origine",
+  "Arrastra para explorar · Rueda para ampliar": "Trascina per esplorare · Scorri per ingrandire",
+  "Mapa visual": "Mappa visiva",
+  "No se pudo activar la pantalla completa.": "Impossibile attivare lo schermo intero.",
+  "Zoom automático": "Zoom automatico",
+  "Centrar y ampliar la tarjeta al seleccionarla": "Centra e ingrandisci la scheda selezionata",
+  "Vista anterior": "Vista precedente",
+  "Recuperar el encuadre anterior sin cerrar las ramas": "Ripristina la vista precedente senza chiudere i rami",
+  "AÑADE IDEAS AL LIENZO": "AGGIUNGI IDEE ALL’AREA DI LAVORO",
+  "Quitar idea del lienzo": "Rimuovi idea dall’area di lavoro",
+  "Añadir idea al lienzo": "Aggiungi idea all’area di lavoro",
+  "Grafos abiertos": "Grafi aperti",
+  "Grafo {n}": "Grafo {n}",
+  "Cerrar grafo {n}": "Chiudi grafo {n}",
+  "Nuevo grafo": "Nuovo grafo",
+  "{n} conexiones directas cargadas. Añade otra idea con +.": "{n} connessioni dirette caricate. Aggiungi un’altra idea con +.",
+  "Lienzo vacío. Busca una idea para empezar.": "Area di lavoro vuota. Cerca un’idea per iniziare.",
+  "Idea retirada del lienzo.": "Idea rimossa dall’area di lavoro.",
+  "Quitar todas las ideas y conexiones del lienzo": "Rimuovi tutte le idee e le connessioni dall’area di lavoro",
+  "Relaciones por idea": "Relazioni per idea",
+  "No se pudieron cargar todas las conexiones. Vuelve a intentarlo.": "Impossibile caricare tutte le connessioni. Riprova.",
 };

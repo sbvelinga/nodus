@@ -586,6 +586,7 @@ try {
   // ── Main header: model selection belongs to Settings/features, never global ─
   const smokeModel = { provider: 'openai', model: 'smoke-model' };
   const chatModel = { provider: 'openrouter', model: 'smoke-chat-model' };
+  const searchableModel = { provider: 'google', model: 'gemini-flash-lite' };
   const migrated = await page.evaluate((model) =>
     window.nodus.updateSettings({
       defaultModel: model,
@@ -598,7 +599,7 @@ try {
   for (const key of ['extractionModel', 'synthesisModel', 'summaryModel', 'fusionModel']) {
     assert.deepEqual(migrated[key], smokeModel, `legacy model migrated into ${key}`);
   }
-  const independent = await page.evaluate(({ model, chat }) =>
+  const independent = await page.evaluate(({ model, chat, searchable }) =>
     window.nodus.updateSettings({
       onboardingComplete: true,
       basicsTutorialVersion: 5,
@@ -606,7 +607,8 @@ try {
       tourComplete: true,
       advancedTourComplete: true,
       modelSettingsMode: 'advanced',
-      favorites: [model, chat],
+      favorites: [model, chat, searchable],
+      nodiModel: model,
       extractionModel: model,
       synthesisModel: model,
       summaryModel: chat,
@@ -618,7 +620,7 @@ try {
       imageModel: 'gemini-3.1-flash-lite-image',
       imageQuality: 'balanced',
       imageStyle: 'antique_book',
-    }), { model: smokeModel, chat: chatModel });
+    }), { model: smokeModel, chat: chatModel, searchable: searchableModel });
   assert.deepEqual(independent.chatModel, chatModel, 'chat model persists independently');
   assert.deepEqual(independent.deepResearchModel, smokeModel, 'Deep Research model persists independently');
   assert.deepEqual(independent.immersionModel, chatModel, 'immersion model persists independently');
@@ -763,8 +765,9 @@ try {
   await page.getByRole('button', { name: 'Modelos IA', exact: true }).click();
   await page.getByText('Generación de imágenes', { exact: true }).waitFor({ timeout: 30_000 });
   assert.equal(await page.getByText('gemini-3.1-flash-lite-image', { exact: false }).count() > 0, true, 'image settings render selected verified model');
-  const advancedPickerBoxes = await page.locator('[data-testid="common-model-overrides"] select').evaluateAll((selects) => selects.map((select) => {
-    const box = select.getBoundingClientRect();
+  const advancedPickers = page.getByTestId('common-model-overrides').locator('button[aria-haspopup="listbox"]');
+  const advancedPickerBoxes = await advancedPickers.evaluateAll((triggers) => triggers.map((trigger) => {
+    const box = trigger.getBoundingClientRect();
     return { width: box.width, height: box.height };
   }));
   assert.ok(advancedPickerBoxes.length >= 5, 'advanced model settings render a common selector for every task, including Nodi');
@@ -772,6 +775,27 @@ try {
   const advancedPickerWidths = advancedPickerBoxes.map((box) => box.width);
   assert.ok(Math.max(...advancedPickerHeights) - Math.min(...advancedPickerHeights) <= 1, 'the Nodi model selector has the same height as adjacent advanced selectors');
   assert.ok(Math.max(...advancedPickerWidths) - Math.min(...advancedPickerWidths) <= 1, 'all common advanced model selectors have the same width');
+  for (let i = 0; i < advancedPickerBoxes.length; i++) {
+    const trigger = advancedPickers.nth(i);
+    await trigger.click();
+    const search = page.getByTestId('model-picker-search');
+    await search.fill('gemini flash');
+    const options = page.locator('.model-picker-list').getByRole('option');
+    await options.filter({ hasText: 'gemini-flash-lite' }).waitFor();
+    assert.equal(await options.count(), 1, 'every common picker matches spaced terms and excludes unrelated models');
+    await search.press('Escape');
+    assert.equal(await trigger.evaluate((element) => document.activeElement === element), true, 'Escape restores focus to the model trigger');
+  }
+  const nodiPicker = page.getByTestId('common-model-overrides').locator('div.grid').filter({ has: page.locator('label').filter({ hasText: 'Asistente Nodi' }) }).locator('button[aria-haspopup="listbox"]');
+  await nodiPicker.click();
+  await page.getByTestId('model-picker-search').fill('flash gemini');
+  await page.locator('.model-picker-list').getByRole('option', { name: /gemini-flash-lite/ }).click();
+  await page.waitForFunction(() => document.querySelector('[data-testid="common-model-overrides"]')?.textContent.includes('gemini-flash-lite'));
+  assert.deepEqual((await page.evaluate(() => window.nodus.getSettings())).nodiModel, searchableModel, 'selecting a search result persists the Nodi model through real IPC');
+  await nodiPicker.click();
+  await page.getByTestId('model-picker-search').fill('openai smoke');
+  await page.locator('.model-picker-list').getByRole('option', { name: /smoke-model/ }).click();
+  console.log('[e2e] all advanced model pickers search without strict separators, preserve layout and save selections');
   console.log('[e2e] image provider settings rendered');
   await page.getByRole('button', { name: 'Acerca de Nodus Research', exact: true }).click();
   await page.getByTestId('about-privacy').waitFor();
@@ -1675,25 +1699,8 @@ try {
   const authorsGraph = await page.evaluate(() => window.nodus.getGraph('authors'));
   assert.ok(Array.isArray(authorsGraph.nodes), 'authors lens answers too');
 
-  const graphOverview = await page.evaluate(() => window.nodus.getGraphOverview());
-  assert.ok(
-    Array.isArray(graphOverview.nodes) && graphOverview.nodes.every((node) => node.type === 'theme'),
-    'graph:overview returns only compact theme hubs'
-  );
-  if (graphOverview.nodes.length > 0) {
-    const graphTheme = await page.evaluate(
-      ({ label }) => window.nodus.getGraphTheme(label, 90),
-      { label: graphOverview.nodes[0].themes[0] ?? graphOverview.nodes[0].label }
-    );
-    const graphThemeIdeas = graphTheme.nodes.filter((node) => node.type !== 'theme');
-    assert.ok(graphThemeIdeas.length <= 150, 'graph:theme keeps the default scene bounded');
-    const graphThemeNodeIds = new Set(graphTheme.nodes.map((node) => node.id));
-    assert.ok(
-      graphTheme.edges.every((edge) => graphThemeNodeIds.has(edge.source) && graphThemeNodeIds.has(edge.target)),
-      'graph:theme only returns edges whose endpoints are present'
-    );
-  }
-  console.log(`[e2e] progressive graph IPC ok (${graphOverview.nodes.length} overview themes)`);
+  const stellar = await page.evaluate(() => window.nodus.stellarPage({kind:'search',limit:20}));
+  assert.ok(Array.isArray(stellar.nodes) && stellar.nodes.length <= 20, 'stellar seed search is paginated');
 
   // ── Records ontology + evidence archive over real IPC ───────────────────────
   const records = await page.evaluate(async () => {
@@ -2644,10 +2651,10 @@ try {
   await page.locator('[data-tour="nav-studyGraph"]').click();
   await page.getByTestId('study-graph-view').waitFor();
   await page.getByTestId('study-graph-subject').waitFor();
-  await page.getByTestId('study-graph-view').getByTestId('sigma-graph-engine').waitFor();
-  await page.getByTestId('study-graph-view').getByPlaceholder('Buscar en el grafo...').waitFor();
-  for (const control of ['Panorama', 'Contradicciones', 'Huecos', 'Filtros']) await page.getByTestId('study-graph-view').getByRole('button', { name: new RegExp(control) }).first().waitFor();
-  console.log('[e2e] study Ideas reuse the original list and study Graph reuses the Sigma engine and controls');
+  await page.getByTestId('study-graph-view').getByTestId('stellar-canvas').waitFor();
+  await page.getByTestId('study-graph-view').getByRole('combobox', { name: 'Buscar una idea', exact: true }).waitFor();
+  for (const control of ['Anterior', 'Play', 'Siguiente', 'Encuadrar']) await page.getByTestId('study-graph-view').getByRole('button', { name: new RegExp(control) }).first().waitFor();
+  console.log('[e2e] study Ideas reuse the original list and study Graph reuses the Stellar canvas and playback controls');
 
   await page.locator('[data-tour="nav-settings"]').click();
   await page.getByRole('button', { name: 'Modelos IA', exact: true }).click();

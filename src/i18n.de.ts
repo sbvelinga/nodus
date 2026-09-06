@@ -1,3 +1,5 @@
+import { CHAT_SKILLS_TRANSLATIONS } from './i18n.chatSkills';
+import { STELLAR_GRAPH_TRANSLATIONS } from './i18n.stellarGraph';
 /**
  * de translations keyed by the Spanish source string (see {@link ./i18n}).
  * Key order mirrors {@link ./i18n.en} so the tables can be diffed side by side.
@@ -56,6 +58,8 @@ import { DATABASE_DEEP_RESEARCH_TRANSLATIONS } from './i18n.databaseDeepResearch
 import { ACADEMIC_TOUR_TRANSLATIONS } from './i18n.academicTour';
 
 export const DE: Record<string, string> = {
+  ...CHAT_SKILLS_TRANSLATIONS['de'],
+  ...STELLAR_GRAPH_TRANSLATIONS["de"],
   ...ACADEMIC_TOUR_TRANSLATIONS.de,
   ...ADAPTIVE_CONCURRENCY_TRANSLATIONS.de,
   ...DATABASE_DEEP_RESEARCH_TRANSLATIONS.de,
@@ -2127,6 +2131,9 @@ export const DE: Record<string, string> = {
   'Corrígelo en Ajustes y pulsa': 'Beheben Sie es in den Einstellungen und klicken Sie auf',
   'Reanudar': 'Fortsetzen',
   'Cola': 'Warteschlange',
+  'Cola y tareas': 'Warteschlange und Aufgaben',
+  "Extracción de texto": "Textextraktion",
+  'Sin tareas ni colas en curso.': 'Keine Aufgaben oder Warteschlangen aktiv.',
   'Procesando:': 'Wird verarbeitet:',
   'Cola en pausa': 'Warteschlange pausiert',
   'En cola…': 'In der Warteschlange…',
@@ -8360,4 +8367,40 @@ export const DE: Record<string, string> = {
   "Quitar modelo": "Modell entfernen",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "Der Server veröffentlicht keine Modelle und du hast noch keines eingetragen.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Dieser Anbieter erzeugt Text, keine Embeddings. Wähle für die semantische Suche in den Einstellungen einen anderen Anbieter.",
+  "Instalar y reiniciar": "Installieren und neu starten",
+  "Más tarde": "Später",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "Update {version} ist bereit. Du kannst es installieren und neu starten, wann du möchtest.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "Du kannst weiterarbeiten. Nodus startet erst neu, wenn du die Installation des Updates auswählst.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Das Update konnte nicht installiert werden. Du kannst es erneut versuchen.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "Das vorherige Update wurde nicht installiert. Suche nach Updates, um es erneut zu versuchen.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Das Update konnte nicht heruntergeladen werden. Prüfe deine Verbindung und versuche es erneut.",
+
+  // Spatial argument map.
+  "CARTOGRAFÍA DEL ARGUMENTO": "ARGUMENTKARTOGRAFIE",
+  "Todas las ramas": "Alle Zweige",
+  "IDEA CENTRAL": "ZENTRALE IDEE",
+  "SIGUE EL HILO": "DEM FADEN FOLGEN",
+  "Despliega una rama. Contrasta sus ideas.": "Öffne einen Zweig. Vergleiche seine Ideen.",
+  "{n} ideas visibles": "{n} sichtbare Ideen",
+  "Relaciones respecto a la idea de origen": "Beziehungen zur übergeordneten Idee",
+  "Arrastra para explorar · Rueda para ampliar": "Ziehen zum Erkunden · Scrollen zum Zoomen",
+  "Mapa visual": "Visuelle Karte",
+  "No se pudo activar la pantalla completa.": "Der Vollbildmodus konnte nicht aktiviert werden.",
+  "Zoom automático": "Automatischer Zoom",
+  "Centrar y ampliar la tarjeta al seleccionarla": "Die ausgewählte Karte zentrieren und vergrößern",
+  "Vista anterior": "Vorherige Ansicht",
+  "Recuperar el encuadre anterior sin cerrar las ramas": "Die vorherige Ansicht wiederherstellen, ohne Zweige einzuklappen",
+  "AÑADE IDEAS AL LIENZO": "IDEEN ZUR ZEICHENFLÄCHE HINZUFÜGEN",
+  "Quitar idea del lienzo": "Idee von der Zeichenfläche entfernen",
+  "Añadir idea al lienzo": "Idee zur Zeichenfläche hinzufügen",
+  "Grafos abiertos": "Offene Graphen",
+  "Grafo {n}": "Graph {n}",
+  "Cerrar grafo {n}": "Graph {n} schließen",
+  "Nuevo grafo": "Neuer Graph",
+  "{n} conexiones directas cargadas. Añade otra idea con +.": "{n} direkte Verbindungen geladen. Füge mit + eine weitere Idee hinzu.",
+  "Lienzo vacío. Busca una idea para empezar.": "Leere Zeichenfläche. Suche nach einer Idee, um zu beginnen.",
+  "Idea retirada del lienzo.": "Idee von der Zeichenfläche entfernt.",
+  "Quitar todas las ideas y conexiones del lienzo": "Alle Ideen und Verbindungen von der Zeichenfläche entfernen",
+  "Relaciones por idea": "Beziehungen pro Idee",
+  "No se pudieron cargar todas las conexiones. Vuelve a intentarlo.": "Nicht alle Verbindungen konnten geladen werden. Versuche es erneut.",
 };
