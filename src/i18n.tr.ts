@@ -2292,6 +2292,7 @@ export const TR: Record<string, string> = {
   "Reanudar": "Devam et",
   "Cola": "Sıra",
   "Cola y tareas": "Kuyruk ve görevler",
+  "Extracción de texto": "Metin çıkarma",
   "Sin tareas ni colas en curso.": "Devam eden görev veya kuyruk yok.",
   "Procesando:": "İşleme:",
   "Cola en pausa": "Duraklatılan sıra",

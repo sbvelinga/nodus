@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { DocumentIndexCampaign, DocumentIndexJob, DocumentIndexJobPhase, DocumentIndexProgress } from '@shared/types';
 import { ConfirmModal } from './ConfirmModal';
@@ -28,16 +28,11 @@ function phaseLabel(phase: DocumentIndexJobPhase): string {
   }[phase]);
 }
 
-export function DocumentIndexProgressBar() {
-  const [progress, setProgress] = useState<DocumentIndexProgress | null>(null);
+export function DocumentIndexProgressBar({ progress }: { progress: DocumentIndexProgress | null }) {
   const [expanded, setExpanded] = useState(false);
   const [busy, setBusy] = useState(false);
   const [confirmStop, setConfirmStop] = useState(false);
 
-  useEffect(() => {
-    void window.nodus.getDocumentIndexProgress().then(setProgress);
-    return window.nodus.onDocumentIndexProgress(setProgress);
-  }, []);
 
   const liveCampaigns = useMemo(
     () => progress?.campaigns.filter((campaign) => LIVE.has(campaign.status)) ?? [],
@@ -99,13 +94,13 @@ export function DocumentIndexProgressBar() {
           <span className="min-w-0 flex-1 break-words">{tr(error)}</span>
         </div>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button className="btn btn-ghost shrink-0" onClick={() => setExpanded((value) => !value)} aria-expanded={expanded}>
           {expanded ? '▾' : '▸'} {t('Índice documental')}
         </button>
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex justify-between gap-3 text-xs text-neutral-500 dark:text-neutral-400">
-            <span className="min-w-0 truncate">
+        <div className="order-last min-w-0 basis-full">
+          <div className="mb-1 flex flex-wrap justify-between gap-2 text-xs text-neutral-500 dark:text-neutral-400">
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
               {allPaused ? t('Análisis documental en pausa') : current ? (
                 <>{tx('{done} de {total} obras', { done: completed + failed, total })} — <span className="text-neutral-800 dark:text-neutral-200">{current.title ?? current.nodusId}</span> · <span className="text-cyan-800 dark:text-cyan-300">{jobPhaseDetail(current)} ({Math.round(current.progress * 100)}%)</span>{itemElapsed && <span className="ml-1 tabular-nums text-neutral-500">· {t('Obra')} {itemElapsed}</span>}</>
               ) : tx('{done} de {total} obras', { done: completed + failed, total })}

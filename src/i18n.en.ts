@@ -321,6 +321,7 @@ export const EN: Record<string, string> = {
   'Claves API copiadas: {n}.': 'API keys copied: {n}.',
   'En cola': 'Queued',
   'Cola y tareas': 'Queue and tasks',
+  "Extracción de texto": "Text extraction",
   'Sin tareas ni colas en curso.': 'No tasks or queues in progress.',
   'Fallido': 'Failed',
   'Cancelado': 'Cancelled',

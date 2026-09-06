@@ -2127,6 +2127,7 @@ export const FR: Record<string, string> = {
   'Reanudar': 'Reprendre',
   'Cola': 'File',
   'Cola y tareas': 'File et tâches',
+  "Extracción de texto": "Extraction de texte",
   'Sin tareas ni colas en curso.': 'Aucune tâche ni file en cours.',
   'Procesando:': 'Traitement :',
   'Cola en pausa': 'File en pause',

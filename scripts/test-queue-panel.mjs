@@ -1,0 +1,232 @@
+import assert from 'node:assert/strict';
+import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import test from 'node:test';
+import { build } from 'esbuild';
+import { chromium } from 'playwright-core';
+
+const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const chrome = [process.env.CHROME_BIN, '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', '/usr/bin/google-chrome', '/usr/bin/chromium', '/usr/bin/chromium-browser'].filter(Boolean).find(existsSync);
+const now = new Date().toISOString();
+const emptyQueue = { total: 0, items: [], done: 0, failed: 0, maintenanceRunning: false };
+const queue = (state = 'running', detail = 'OCR p. 3/10') => ({ total: 2, done: 0, failed: 0, paused: state === 'paused', current: { title: 'Historia de las sociedades contemporáneas', kind: 'deep' }, items: [{ id: 'running', state, title: 'Historia de las sociedades contemporáneas', kind: 'deep', detail }, { id: 'waiting', state: 'queued', title: 'Otra obra', kind: 'summary' }] });
+const zotero = (phase = 'attachments') => ({ requestId: 'z1', phase, percent: 72, libraryName: 'Biblioteca de investigación', message: 'Copiando y verificando adjuntos…', processedItems: 14500, totalItems: 20000, processedAttachments: 7500, totalAttachments: 10500, currentItem: 'Historia contemporánea', startedAt: new Date(Date.now() - 7500000).toISOString(), currentItemStartedAt: new Date(Date.now() - 180000).toISOString() });
+const embedding = { running: true, paused: false, cancelled: false, totalIdeas: 100, ideasEmbedded: 30, totalWorks: 5, currentWorkIndex: 1, currentIdeaIndex: 2, currentWorkIdeas: 10, currentWorkTitle: 'Historia comparada', error: null };
+const passages = { running: true, paused: false, cancelled: false, totalPassages: 500, passagesEmbedded: 30, totalWorks: 5, currentWorkIndex: 1, currentPassageIndex: 2, currentWorkPassages: 100, currentWorkTitle: 'Historia comparada', error: null };
+const documents = (status = 'running', phase = 'structuring') => ({ campaigns: [{ campaignId: 'c1', vaultId: 'v1', status, totalJobs: 2, completedJobs: 0, failedJobs: 0, estimatedUnits: 100, completedUnits: 25, createdAt: now, updatedAt: now }], jobs: [{ jobId: 'j1', campaignId: 'c1', vaultId: 'v1', nodusId: 'w1', title: 'Documento en análisis', status: status === 'completed' ? 'completed' : status, phase, progress: .25, createdAt: now, currentUnit: 1, totalUnits: 4 }] });
+
+test('queue dropdown retains and controls every processing lane', { timeout: 240_000 }, async (t) => {
+  if (!chrome) { t.skip('Chrome/Chromium not installed'); return; }
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'nodus-queue-panel-'));
+  const browser = await chromium.launch({ executablePath: chrome, headless: true });
+  let page;
+  try {
+    const bundle = await build({ entryPoints: [path.join(root, 'scripts/fixtures/queue-panel/renderer.tsx')], bundle: true, write: false, platform: 'browser', jsx: 'automatic', define: { 'process.env.NODE_ENV': '"production"' } });
+    const css = path.join(dir, 'style.css');
+    execFileSync(path.join(root, 'node_modules/.bin/tailwindcss'), ['-i', 'src/index.css', '-o', css, '--minify'], { cwd: root, stdio: 'pipe' });
+    const errors = [];
+    async function fresh(initial = {}, hold = []) {
+      if (page) await page.close();
+      page = await browser.newPage({ viewport: { width: 1200, height: 900 } });
+      page.setDefaultTimeout(15000);
+      page.on('pageerror', (e) => errors.push(e.message));
+      await page.route('http://queue.test/', (route) => route.fulfill({ contentType: 'text/html', body: '<html class="dark"><body><div id="root"></div></body></html>' }));
+      await page.goto('http://queue.test/');
+      await page.addStyleTag({ content: await readFile(css, 'utf8') });
+      await page.evaluate(({ initial, hold }) => { window.initial = initial; window.hold = hold; }, { initial, hold });
+      await page.addScriptTag({ content: bundle.outputFiles[0].text });
+      await page.getByTestId('trigger').waitFor();
+    }
+    const emit = async (event, value) => { await page.evaluate(([event, value]) => window.emit(event, value), [event, value]); };
+    const open = async () => { await page.evaluate(() => window.openPanel()); await page.getByTestId('header-queue-panel').waitFor(); };
+    const close = async () => { await page.evaluate(() => window.closePanel()); await page.getByTestId('header-queue-panel').waitFor({ state: 'detached' }); };
+    const count = async (value) => { await page.waitForFunction((value) => document.querySelector('[data-testid="count"]')?.textContent === String(value), value); };
+    const action = async (name, ...args) => { await page.waitForFunction((expected) => window.actions.some((actual) => JSON.stringify(actual) === JSON.stringify(expected)), [name, ...args]); };
+    async function confirmHeld(title, label) {
+      const dialog = page.getByRole('dialog', { name: title, exact: true });
+      const button = dialog.getByRole('button', { name: label, exact: true });
+      await button.scrollIntoViewIfNeeded(); const box = await button.boundingBox();
+      await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2); await page.mouse.down();
+      await page.waitForTimeout(350); await page.mouse.up();
+    }
+    await t.test('closed Zotero failures survive reopening and dismissal; subscriptions are unique', async () => {
+      await fresh(); await emit('onZoteroImportProgress', zotero('failed')); await open();
+      assert.match(await page.getByTestId('zotero-progress-bar').innerText(), /No se pudo completar/);
+      assert.equal(await page.getByTestId('attention').innerText(), 'true');
+      for (let i = 0; i < 3; i++) { await close(); await open(); }
+      assert.equal(await page.evaluate(() => window.listeners.onZoteroImportProgress.size), 1);
+      await page.getByRole('button', { name: 'Ocultar la importación terminada' }).click(); await close(); await open();
+      await page.getByTestId('header-queue-empty').waitFor();
+      assert.equal(await page.getByTestId('attention').innerText(), 'false');
+    });
+    await t.test('a retried job can show the same terminal status after its previous result was hidden', async () => {
+      await fresh(); await open();
+      await emit('onZoteroImportProgress', zotero('failed'));
+      await page.getByRole('button', { name: 'Ocultar la importación terminada' }).click();
+      await page.evaluate(([active, failed]) => { window.emit('onZoteroImportProgress', active); window.emit('onZoteroImportProgress', failed); }, [zotero(), zotero('failed')]);
+      await page.getByTestId('zotero-progress-bar').waitFor();
+      const job = { entryId: 'd1', phase: 'failed', message: 'Fallido' };
+      await emit('onDictionaryProgress', job); await page.getByTestId('dictionary-task-d1').getByRole('button', { name: 'Ocultar' }).click();
+      await page.evaluate((job) => { window.emit('onDictionaryProgress', { ...job, phase: 'queued' }); window.emit('onDictionaryProgress', job); }, job);
+      await page.getByTestId('dictionary-task-d1').waitFor();
+      const ocr = { docId: 'o1', status: 'done', pageCount: 10, doneCount: 10, errorCount: 0 };
+      await page.evaluate((job) => window.emit('onOcrEvent', 'o1', job), ocr); await page.getByTestId('ocr-task-o1').getByRole('button', { name: 'Ocultar' }).click();
+      await page.evaluate((job) => { window.emit('onOcrEvent', 'o1', { ...job, status: 'processing', doneCount: 0 }); window.emit('onOcrEvent', 'o1', job); }, ocr);
+      await page.getByTestId('ocr-task-o1').waitFor();
+    });
+    await t.test('restored Zotero work updates the badge; stale initial reads cannot replace broadcasts', async () => {
+      await fresh({ listZoteroSyncSessions: [{ status: 'running', updatedAt: new Date().toISOString(), progress: zotero() }] }); await count(1); await open();
+      await page.getByRole('button', { name: 'Cancelar importación' }).click(); await action('cancelZoteroLibraryImport', 'z1');
+      await fresh({}, ['getQueue']); await emit('onQueueProgress', queue()); await count(1);
+      await page.evaluate((empty) => window.pending.getQueue(empty), emptyQueue); await open(); await page.getByTestId('queue-progress-bar').waitFor(); await count(1);
+    });
+    await t.test('extraction, OCR, fusion, summaries, full embedding chain and bridges remain visible', async () => {
+      await fresh(); await open();
+      for (const detail of ['Extrayendo p. 3/10', 'OCR p. 3/10', 'Analizando fragmento 2/5 con IA…', 'Fusionando idea 2/5…', 'Generando el resumen requerido…', 'Indexando ideas y pasajes requeridos…', 'Escaneando pares semánticos…']) {
+        await emit('onQueueProgress', queue('running', detail)); await count(1); await close(); await open();
+        assert.ok((await page.getByTestId('queue-progress-bar').innerText()).includes(detail), detail);
+      }
+      await emit('onQueueProgress', { ...emptyQueue, maintenanceRunning: true, maintenanceDetail: 'Postprocesando relaciones del grafo…' }); await count(1);
+      assert.match(await page.getByTestId('queue-progress-bar').innerText(), /99%/);
+      await emit('onQueueProgress', { ...emptyQueue, maintenanceError: 'Revisión pendiente' }); await count(0);
+      await page.getByRole('button', { name: 'Reintentar', exact: true }).click(); await action('resumeQueue');
+      assert.equal(await page.getByTestId('attention').innerText(), 'true');
+    });
+    await t.test('scan pause/resume, retry, prioritization, removal and both modal confirmations', async () => {
+      await fresh({ getQueue: queue() }); await open(); const bar = page.getByTestId('queue-progress-bar');
+      await bar.getByRole('button', { name: 'Pausar la cola' }).click(); await action('pauseQueue');
+      await emit('onQueueProgress', queue('paused')); await bar.getByRole('button', { name: 'Reanudar la cola' }).click(); await action('resumeQueue');
+      await bar.getByRole('button', { name: /▸ Cola/ }).click();
+      await bar.getByRole('button', { name: 'Mover al principio de la cola: Otra obra' }).click(); await action('moveQueueItemToTop', 'waiting');
+      await bar.getByRole('button', { name: 'Eliminar de la cola: Otra obra' }).click(); await action('removeQueueItem', 'waiting');
+      await bar.getByRole('button', { name: 'Limpiar la cola', exact: true }).click(); await confirmHeld('Limpiar la cola', 'Limpiar'); await action('clearQueue');
+      await bar.getByRole('button', { name: 'Detener y vaciar la cola', exact: true }).click(); await page.keyboard.press('Escape');
+      assert.equal(await page.getByTestId('header-queue-panel').count(), 1);
+      await bar.getByRole('button', { name: 'Detener y vaciar la cola', exact: true }).click(); await confirmHeld('Detener y vaciar la cola', 'Detener y vaciar'); await action('stopQueue');
+      await emit('onQueueProgress', { ...queue(), failed: 1 }); await bar.getByRole('button', { name: 'Reintentar 1 fallidos' }).click(); await action('retryFailed');
+    });
+    for (const lane of [
+      { name: 'idea', getter: 'getEmbeddingStatus', event: 'onEmbeddingProgress', fixture: embedding, bar: 'embeddings-progress-bar', pause: 'pauseEmbedding', resume: 'resumeEmbedding', stop: 'stopEmbedding', clear: 'clearEmbeddingProgress', total: 'totalIdeas' },
+      { name: 'full-text passage', getter: 'getPassageStatus', event: 'onPassageProgress', fixture: passages, bar: 'passages-progress-bar', pause: 'pausePassageEmbedding', resume: 'resumePassageEmbedding', stop: 'stopPassageEmbedding', clear: 'clearPassageProgress', total: 'totalPassages' },
+    ]) await t.test(`${lane.name} embeddings retain running, paused, error, cancelled and completed results`, async () => {
+      await fresh({ [lane.getter]: lane.fixture }); await open(); await count(1); const bar = page.getByTestId(lane.bar);
+      await bar.getByTitle('Pausar indexación', { exact: true }).click(); await action(lane.pause);
+      await emit(lane.event, { ...lane.fixture, running: false, paused: true, [lane.total]: 0 }); await count(1);
+      await bar.getByTitle('Reanudar indexación', { exact: true }).click(); await action(lane.resume);
+      await bar.getByTitle('Detener indexación', { exact: true }).click(); await action(lane.stop);
+      for (const terminal of [{ error: 'Error de prueba' }, { cancelled: true }, {}]) {
+        await close(); await emit(lane.event, { ...lane.fixture, running: false, ...terminal }); await open(); await count(0); await bar.waitFor();
+      }
+      await bar.getByTitle(/Ocultar cola/).click(); await action(lane.clear);
+    });
+    await t.test('document index phases, pause/resume/stop, terminal errors and results', async () => {
+      await fresh({ getDocumentIndexProgress: documents() }); await open(); await count(1); const bar = page.getByTestId('document-index-progress-bar');
+      for (const phase of ['waiting_source', 'structuring', 'analyzing_sections', 'synthesizing', 'auditing', 'repairing', 'embedding', 'aligning', 'publishing']) {
+        await emit('onDocumentIndexProgress', documents('running', phase)); await bar.waitFor();
+      }
+      await bar.getByTitle('Pausar indexación').click(); await action('setDocumentIndexCampaignStatus', 'v1', 'c1', 'paused');
+      await emit('onDocumentIndexProgress', documents('paused', 'paused')); await bar.getByTitle('Reanudar indexación').click(); await action('setDocumentIndexCampaignStatus', 'v1', 'c1', 'running');
+      await bar.getByTitle('Detener indexación').click(); await confirmHeld('Detener indexación', 'Detener'); await action('setDocumentIndexCampaignStatus', 'v1', 'c1', 'cancelled');
+      await close(); const failed = documents('failed'); failed.campaigns[0].error = 'Fallo de índice'; await emit('onDocumentIndexProgress', failed); await open(); await count(0);
+      assert.match(await page.getByTestId('document-result-c1').innerText(), /Fallo de índice/);
+      await page.getByTestId('document-result-c1').getByRole('button', { name: 'Ocultar' }).click(); await page.getByTestId('header-queue-empty').waitFor();
+    });
+    await t.test('library extraction job phases, cancellation, retry and dismissal', async () => {
+      const job = { id: 'e1', itemId: 'book', status: 'processing', phase: 'extract', progress: .4, updatedAt: now };
+      await fresh({ listLibraryExtractionJobs: [job] }); await open(); await count(1); const row = page.getByTestId('library-extraction-e1');
+      for (const phase of ['queued', 'analyze', 'extract', 'ocr', 'assets', 'write']) { await emit('onLibraryExtractionProgress', { ...job, phase, message: `Fase ${phase}` }); await row.getByText(`Fase ${phase}`, { exact: true }).waitFor(); }
+      await row.getByRole('button', { name: 'Cancelar' }).click(); await action('cancelLibraryExtraction', 'e1');
+      await close(); await emit('onLibraryExtractionProgress', { ...job, status: 'failed', error: 'OCR no disponible' }); await open(); await count(0);
+      await row.getByRole('button', { name: 'Reintentar' }).click(); await action('retryLibraryExtraction', 'e1');
+      await row.getByRole('button', { name: 'Ocultar' }).click(); await page.getByTestId('header-queue-empty').waitFor();
+      await emit('onLibraryExtractionProgress', { ...job, updatedAt: 'later' }); await row.waitFor(); await count(1);
+    });
+    await t.test('report and dictionary queues retain failures and background progress', async () => {
+      const report = { id: 'r1', title: 'Informe desde MCP', status: 'queued', origin: 'mcp' };
+      const dict = { entryId: 'd1', phase: 'queued', message: 'En cola' };
+      await fresh({ listDeepResearchJobs: [report], listDictionaryGenerationJobs: [dict] }); await open(); await count(2);
+      const row = page.getByTestId('research-task-r1'); await row.getByRole('button', { name: 'Cancelar' }).click(); await action('cancelDeepResearchJob', 'r1');
+      await close(); await emit('onDeepResearchQueue', [{ ...report, status: 'failed', error: 'Fallo de informe' }]); await open(); assert.match(await row.innerText(), /Fallo de informe/);
+      await row.getByRole('button', { name: 'Ocultar' }).click();
+      for (const phase of ['retrieving', 'generating', 'validating', 'saving']) {
+        await close(); await emit('onDictionaryProgress', { ...dict, phase, message: `Diccionario ${phase}` }); await open(); await count(1);
+        assert.match(await page.getByTestId('dictionary-task-d1').innerText(), new RegExp(phase));
+      }
+      await emit('onDictionaryProgress', { ...dict, phase: 'degraded', error: 'Evidencia insuficiente' }); await count(0);
+      assert.equal(await page.getByTestId('attention').innerText(), 'true'); await page.getByTestId('dictionary-task-d1').getByRole('button', { name: 'Ocultar' }).click(); await page.getByTestId('header-queue-empty').waitFor();
+    });
+    await t.test('Toolkit OCR restores active documents, updates and cancels by document ID', async () => {
+      await fresh({ listOcrDocs: [{ id: 'o1', name: 'Archivo OCR', status: 'processing', pageCount: 10, doneCount: 3, errorCount: 0 }] }); await open(); await count(1);
+      const row = page.getByTestId('ocr-task-o1'); await row.getByRole('button', { name: 'Cancelar' }).click(); await action('cancelOcrDoc', 'o1');
+      await page.evaluate(() => window.emit('onOcrEvent', 'o1', { docId: 'o1', status: 'done', pageCount: 10, doneCount: 10, errorCount: 0 })); await count(0);
+      assert.match(await row.innerText(), /Archivo OCR/); await close(); await open(); assert.match(await row.innerText(), /100%/);
+      await row.getByRole('button', { name: 'Ocultar' }).click(); await page.getByTestId('header-queue-empty').waitFor();
+    });
+    await t.test('Convert, Translate, audio, database, immersion and report jobs remain observable', async () => {
+      await fresh(); await open();
+      for (const key of ['toolkit:convert', 'toolkit:translate', 'audio:generate:idea:one', 'database:ai:text:column:one:two', 'immersion:generate', 'deep-research:immersion:one']) {
+        const id = await page.evaluate((key) => window.startJob(key, { jobId: 'task1', done: 2, total: 5, message: 'Procesando…' }, { entityKind: 'idea', entityId: 'one' }), key);
+        const row = page.getByTestId(`background-task-${id}`); await row.waitFor(); await count(1); await close(); await open(); await row.waitFor();
+        if (key.startsWith('toolkit:')) { await row.getByRole('button', { name: 'Cancelar' }).click(); await action(key === 'toolkit:convert' ? 'cancelToolkitJob' : 'cancelTranslateJob', 'task1'); }
+        await page.evaluate((key) => window.deferredJobs[key].resolve({}), key); await count(0);
+        await row.getByRole('button', { name: 'Ocultar' }).click(); await row.waitFor({ state: 'detached' });
+      }
+    });
+    await t.test('partially failed completed jobs remain actionable from the header', async () => {
+      await fresh(); await open();
+      const id = await page.evaluate(() => window.startJob('toolkit:convert', { done: 2, total: 2 }));
+      await page.getByTestId(`background-task-${id}`).waitFor();
+      await page.evaluate(() => window.deferredJobs['toolkit:convert'].resolve({ files: [{ error: 'Archivo no válido' }] }));
+      await count(0); assert.equal(await page.getByTestId('attention').innerText(), 'true');
+      assert.match(await page.getByTestId(`background-task-${id}`).innerText(), /1 fallidos/);
+      await page.getByTestId(`background-task-${id}`).getByRole('button', { name: 'Ocultar' }).click();
+      assert.equal(await page.getByTestId('attention').innerText(), 'false');
+    });
+    await t.test('incremental snapshots preserve newer events and large queues load titles on demand', async () => {
+      await fresh({}, ['listLibraryExtractionJobs']);
+      const job = { id: 'e1', itemId: 'b1', status: 'processing', phase: 'ocr', progress: .8, updatedAt: now };
+      await emit('onLibraryExtractionProgress', job);
+      await page.evaluate((job) => window.pending.listLibraryExtractionJobs([{ ...job, progress: .1 }, { ...job, id: 'e2', itemId: 'b2' }]), job);
+      await open(); assert.match(await page.getByTestId('library-extraction-e1').innerText(), /80%/); await page.getByTestId('library-extraction-e2').waitFor();
+      const jobs = Array.from({ length: 70 }, (_, n) => ({ ...job, id: `e${n}`, itemId: `b${n}`, status: n === 69 ? 'processing' : 'done' }));
+      await fresh({ listLibraryExtractionJobs: jobs }); await open(); await count(1);
+      assert.equal(await page.locator('[data-testid^="library-extraction-"]').count(), 50);
+      await page.getByTestId('library-extraction-e69').waitFor();
+      await page.getByRole('button', { name: 'Mostrar más', exact: true }).click();
+      assert.equal(await page.locator('[data-testid^="library-extraction-"]').count(), 70);
+    });
+    await t.test('simultaneous pipelines fit the compact panel in both themes and at narrow widths', async () => {
+      await fresh({ getQueue: queue(), getEmbeddingStatus: embedding, getPassageStatus: passages, getDocumentIndexProgress: documents(), listZoteroSyncSessions: [{ status: 'running', updatedAt: new Date().toISOString(), progress: zotero() }] }); await open(); await count(5);
+      for (const theme of ['dark', 'light']) for (const width of [1200, 360]) {
+        await page.setViewportSize({ width, height: 900 }); await page.evaluate((theme) => { document.documentElement.className = theme; }, theme);
+        await page.waitForTimeout(200);
+        if (process.env.NODUS_QUEUE_QA_DIR) {
+          await mkdir(process.env.NODUS_QUEUE_QA_DIR, { recursive: true });
+          await page.screenshot({ path: path.join(process.env.NODUS_QUEUE_QA_DIR, `${theme}-${width}.png`) });
+        }
+        const background = await page.getByTestId('queue-progress-bar').evaluate((bar) => getComputedStyle(bar).backgroundColor);
+        const channel = Number(background.match(/[\d.]+/)[0]);
+        assert.ok(theme === 'light' ? channel > 180 : channel < 90, `${theme} progress surface follows the theme: ${background}`);
+        const overflow = await page.getByTestId('header-queue-panel').evaluate((panel) => {
+          const rect = panel.getBoundingClientRect();
+          const walker = document.createTreeWalker(panel, NodeFilter.SHOW_TEXT); const problems = [];
+          while (walker.nextNode()) {
+            const node = walker.currentNode; if (!node.textContent.trim() || node.parentElement.closest('.sr-only')) continue;
+            const range = document.createRange(); range.selectNodeContents(node);
+            for (const r of range.getClientRects()) if (r.width > 0 && (r.left < rect.left - 1 || r.right > rect.right + 1)) problems.push(node.textContent);
+          }
+          return problems;
+        });
+        assert.deepEqual(overflow, [], `${theme} ${width}px: no clipped progress text`);
+      }
+      await page.setViewportSize({ width: 1200, height: 900 });
+      await page.keyboard.press('Escape'); await page.getByTestId('header-queue-panel').waitFor({ state: 'detached' });
+      await count(5);
+    });
+    assert.deepEqual(errors, [], 'real renderer has no uncaught errors');
+  } finally { await browser.close(); await rm(dir, { recursive: true, force: true }); }
+});

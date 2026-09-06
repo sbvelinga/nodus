@@ -1908,6 +1908,7 @@ export const IT: Record<string, string> = {
   "Reanudar": "Riprendi",
   "Cola": "Coda",
   "Cola y tareas": "Coda e attività",
+  "Extracción de texto": "Estrazione del testo",
   "Sin tareas ni colas en curso.": "Nessuna attività o coda in corso.",
   "Procesando:": "Elaborazione:",
   "Cola en pausa": "Coda in pausa",

@@ -273,7 +273,8 @@ export function App() {
   const [notificationsAnchor, setNotificationsAnchor] = useState<HTMLElement | null>(null);
   // Queue and task progress, relocated from the bottom strip into its own dropdown.
   const [queueAnchor, setQueueAnchor] = useState<HTMLElement | null>(null);
-  const { live: queueLive } = useQueueActivity();
+  const queueActivity = useQueueActivity();
+  const queueLive = queueActivity.live;
   const [notifications, setNotifications] = useState<NodiNotification[]>([]);
   const [refreshingNotifications, setRefreshingNotifications] = useState(false);
   const {
@@ -1498,12 +1499,12 @@ export function App() {
               dataTour="queue"
               icon="clock"
               label={t('Cola y tareas')}
-              title={t('Cola y tareas')}
+              title={queueActivity.attention ? `${t('Cola y tareas')} · ${t('Error')}` : t('Cola y tareas')}
               queueTrigger
               onClick={(e) => toggleQueue(e.currentTarget)}
             />
-            {queueLive > 0 && (
-              <span className="header-action-badge">{queueLive > 9 ? '9+' : queueLive}</span>
+            {(queueLive > 0 || queueActivity.attention) && (
+              <span className={`header-action-badge ${queueActivity.attention ? '!bg-red-600 !text-white' : ''}`}>{queueActivity.attention && queueLive === 0 ? '!' : queueLive > 9 ? '9+' : queueLive}</span>
             )}
           </span>
           {/* The notification centre, reachable whether or not Nodi is enabled — turning
@@ -1570,6 +1571,7 @@ export function App() {
         />
 
         <QueuePanel
+          activity={queueActivity}
           anchorEl={queueAnchor}
           onClose={() => setQueueAnchor(null)}
           captureBrowserOverlaySnapshot={captureNotificationsBrowserSnapshot}

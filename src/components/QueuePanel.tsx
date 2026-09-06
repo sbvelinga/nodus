@@ -1,14 +1,9 @@
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { createPortal } from 'react-dom';
-import type {
-  DocumentIndexCampaign,
-  DocumentIndexProgress,
-  EmbeddingPipelineProgress,
-  PassageEmbeddingProgress,
-  QueueProgress,
-} from '@shared/types';
-import type { ZoteroImportProgress } from '@shared/libraryTypes';
+import type { QueueActivity } from '../queueActivity';
+export { useQueueActivity } from '../queueActivity';
+import { AdditionalQueueTasks } from './AdditionalQueueTasks';
 import { t } from '../i18n';
 import { Icon } from './ui';
 import { QueueBar } from './QueueBar';
@@ -17,69 +12,8 @@ import { DocumentIndexProgressBar } from './DocumentIndexProgressBar';
 import { EmbeddingProgressBar } from './EmbeddingProgressBar';
 import { PassageProgressBar } from './PassageProgressBar';
 
-const ZOTERO_FINISHED: ZoteroImportProgress['phase'][] = ['complete', 'canceled', 'failed'];
-const DOC_INDEX_LIVE = new Set<DocumentIndexCampaign['status']>(['queued', 'running', 'paused']);
-
-function queueLive(queue: QueueProgress | null): boolean {
-  return Boolean(queue && (
-    queue.maintenanceRunning
-    || queue.items.some((item) => item.state === 'queued' || item.state === 'running' || item.state === 'paused')
-  ));
-}
-
-/**
- * How many of the queue readouts would currently render, and how many carry live
- * work. Each progress surface owns its own subscription, so this hook re-reads the
- * same channels in parallel: the header badge and the panel's empty state cannot
- * reach into the bars' internal state, and duplicating a broadcast subscription is
- * cheaper than lifting five progress states into App.
- */
-export function useQueueActivity(): { visible: number; live: number } {
-  const [queue, setQueue] = useState<QueueProgress | null>(null);
-  const [zotero, setZotero] = useState<ZoteroImportProgress | null>(null);
-  const [docIndex, setDocIndex] = useState<DocumentIndexProgress | null>(null);
-  const [embeddings, setEmbeddings] = useState<EmbeddingPipelineProgress | null>(null);
-  const [passages, setPassages] = useState<PassageEmbeddingProgress | null>(null);
-
-  useEffect(() => {
-    void window.nodus.getQueue().then(setQueue);
-    void window.nodus.getDocumentIndexProgress().then(setDocIndex);
-    void window.nodus.getEmbeddingStatus().then(setEmbeddings);
-    void window.nodus.getPassageStatus().then(setPassages);
-    const offQueue = window.nodus.onQueueProgress(setQueue);
-    const offZotero = window.nodus.onZoteroImportProgress(setZotero);
-    const offDocIndex = window.nodus.onDocumentIndexProgress(setDocIndex);
-    const offEmbeddings = window.nodus.onEmbeddingProgress(setEmbeddings);
-    const offPassages = window.nodus.onPassageProgress(setPassages);
-    return () => {
-      offQueue();
-      offZotero();
-      offDocIndex();
-      offEmbeddings();
-      offPassages();
-    };
-  }, []);
-
-  const zoteroVisible = zotero !== null;
-  const docIndexVisible = docIndex !== null && docIndex.campaigns.some((campaign) => DOC_INDEX_LIVE.has(campaign.status));
-  const embeddingsVisible = embeddings !== null && (embeddings.running || embeddings.totalIdeas > 0 || Boolean(embeddings.error));
-  const passagesVisible = passages !== null && (passages.running || passages.totalPassages > 0 || Boolean(passages.error));
-  const visible = (queue !== null && !(queue.total === 0 && !queue.maintenanceError && !queue.maintenanceRunning) ? 1 : 0)
-    + (zoteroVisible ? 1 : 0)
-    + (docIndexVisible ? 1 : 0)
-    + (embeddingsVisible ? 1 : 0)
-    + (passagesVisible ? 1 : 0);
-
-  const live = (queueLive(queue) ? 1 : 0)
-    + (zotero !== null && !ZOTERO_FINISHED.includes(zotero.phase) ? 1 : 0)
-    + (docIndexVisible ? 1 : 0)
-    + (embeddings !== null && (embeddings.running || embeddings.paused) ? 1 : 0)
-    + (passages !== null && (passages.running || passages.paused) ? 1 : 0);
-
-  return { visible, live };
-}
-
 interface QueuePanelProps {
+  activity: QueueActivity;
   /** The button the panel hangs from; null when closed. */
   anchorEl: HTMLElement | null;
   onClose: () => void;
@@ -90,11 +24,11 @@ interface QueuePanelProps {
 /**
  * The queue and task progress dropdown, modelled on NotificationsPanel: same
  * anchor placement, same Escape/outside-click ownership split with App, same
- * browser-overlay freeze. The five progress surfaces render unchanged inside;
- * the `dark` wrapper forces their dark strip styling even in the light theme,
- * because the panel itself is dark regardless of theme, like the inbox panels.
+ * browser-overlay freeze. Progress is owned by App, independently of this panel;
+ * all task surfaces inherit the active theme, including portalled confirmations.
  */
 export function QueuePanel({
+  activity,
   anchorEl,
   onClose,
   captureBrowserOverlaySnapshot,
@@ -110,7 +44,7 @@ export function QueuePanel({
     width: number;
     height: number;
   } | null>(null);
-  const { visible } = useQueueActivity();
+  const { visible } = activity;
 
   // Placement, Escape and outside-click are ServerInbox's, deliberately: the panels
   // hanging off the header behave identically, and that one already solved it.
@@ -141,11 +75,12 @@ export function QueuePanel({
       const target = event.target;
       if (!(target instanceof Node)) return;
       if (panelRef.current?.contains(target)) return;
-      if (target instanceof Element && target.closest('[data-queue-trigger]')) return;
+      if (target instanceof Element && target.closest('[data-queue-trigger], [aria-modal="true"]')) return;
       onClose();
     };
     const onKey = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
+      // ConfirmModal is portalled beside this panel and owns Escape while open.
+      if (event.key === 'Escape' && !document.querySelector('[aria-modal="true"]')) onClose();
     };
     document.addEventListener('mousedown', onDown, true);
     window.addEventListener('keydown', onKey);
@@ -240,12 +175,15 @@ export function QueuePanel({
               <Icon name="x" />
             </button>
           </div>
-          <div className="dark max-h-[min(70vh,32rem)] overflow-y-auto">
-            <QueueBar />
-            <ZoteroImportProgressBar />
-            <DocumentIndexProgressBar />
-            <EmbeddingProgressBar />
-            <PassageProgressBar />
+          <div className="max-h-[min(70vh,32rem)] overflow-y-auto [overflow-wrap:anywhere]">
+            <QueueBar progress={activity.queue} />
+            <ZoteroImportProgressBar progress={activity.zotero} onDismiss={() => {
+              if (activity.zotero) activity.dismiss('zotero', `${activity.zotero.requestId}:${activity.zotero.phase}`);
+            }} />
+            <DocumentIndexProgressBar progress={activity.documents} />
+            <EmbeddingProgressBar progress={activity.embeddings} />
+            <PassageProgressBar progress={activity.passages} />
+            <AdditionalQueueTasks activity={activity} />
             {visible === 0 && (
               <p data-testid="header-queue-empty" className="px-3 py-6 text-center text-xs text-neutral-500">
                 {t('Sin tareas ni colas en curso.')}

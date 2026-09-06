@@ -2128,6 +2128,7 @@ export const DE: Record<string, string> = {
   'Reanudar': 'Fortsetzen',
   'Cola': 'Warteschlange',
   'Cola y tareas': 'Warteschlange und Aufgaben',
+  "Extracción de texto": "Textextraktion",
   'Sin tareas ni colas en curso.': 'Keine Aufgaben oder Warteschlangen aktiv.',
   'Procesando:': 'Wird verarbeitet:',
   'Cola en pausa': 'Warteschlange pausiert',

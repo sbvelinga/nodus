@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { passageVisible } from '../queueActivity';
 import { motion } from 'framer-motion';
 import type { PassageEmbeddingProgress } from '@shared/types';
 import { Icon } from './ui';
@@ -6,16 +6,11 @@ import { t, tr, tx } from '../i18n';
 import { elapsedTimeLabel } from '@shared/elapsedTime';
 import { useElapsedClock } from '../useElapsedClock';
 
-export function PassageProgressBar() {
-  const [progress, setProgress] = useState<PassageEmbeddingProgress | null>(null);
+export function PassageProgressBar({ progress }: { progress: PassageEmbeddingProgress | null }) {
 
-  useEffect(() => {
-    void window.nodus.getPassageStatus().then(setProgress);
-    return window.nodus.onPassageProgress(setProgress);
-  }, []);
 
   const now = useElapsedClock(Boolean(progress && (progress.running || progress.paused)));
-  if (!progress || (!progress.running && progress.totalPassages === 0 && !progress.error)) return null;
+  if (!progress || !passageVisible(progress)) return null;
   const {
     running,
     paused,
@@ -39,13 +34,13 @@ export function PassageProgressBar() {
   const workElapsed = elapsedTimeLabel(currentWorkStartedAt, currentWorkFinishedAt, now);
 
   return (
-    <div className="border-t border-neutral-200 bg-neutral-100/80 backdrop-blur px-4 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/80">
+    <div className="border-t border-neutral-200 bg-neutral-100/80 backdrop-blur px-4 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/80" data-testid="passages-progress-bar">
       {error && <div className="mb-2 rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs text-red-700 dark:border-red-800/60 dark:bg-red-950/60 dark:text-red-300">{t('Error')}: {tr(error)}</div>}
-      <div className="flex items-center gap-3">
-        <span className="text-xs font-medium whitespace-nowrap text-green-400">{t('Pasajes')}</span>
-        <div className="flex-1">
-          <div className="mb-1 flex justify-between text-xs text-neutral-400">
-            <span>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="mr-auto text-xs font-medium whitespace-nowrap text-green-400">{t('Pasajes')}</span>
+        <div className="order-last min-w-0 basis-full">
+          <div className="mb-1 flex flex-wrap justify-between gap-2 text-xs text-neutral-400">
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
               {active ? (
                 currentWorkTitle ? <>{t('Obra')} {currentWorkIndex + 1}/{totalWorks}: <span className="text-neutral-200">{currentWorkTitle}</span><span className="ml-1 text-green-300">· {t('pasaje')} {currentPassageIndex + 1}/{currentWorkPassages}</span>{workElapsed && <span className="ml-1 tabular-nums text-neutral-500">· {t('Obra')} {workElapsed}</span>}</> : t('Preparando…')
               ) : error ? t('Indexación detenida por error') : cancelled ? t('Indexación cancelada') : tx('{n} pasajes indexados', { n: passagesEmbedded })}

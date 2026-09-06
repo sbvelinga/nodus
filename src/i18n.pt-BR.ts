@@ -2113,6 +2113,7 @@ export const PT_BR: Record<string, string> = {
   'Reanudar': 'Retomar',
   'Cola': 'Fila',
   'Cola y tareas': 'Fila e tarefas',
+  "Extracción de texto": "Extração de texto",
   'Sin tareas ni colas en curso.': 'Sem tarefas nem filas em andamento.',
   'Procesando:': 'Processando:',
   'Cola en pausa': 'Fila pausada',
