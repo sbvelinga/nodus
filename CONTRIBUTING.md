@@ -96,6 +96,13 @@ also be run manually by supplying the exact tag. The channel/version validator
 stops a stable tag from entering Beta or a beta tag from entering Stable before
 any native build begins.
 
+Desktop updates download automatically, but installation and restart require
+the explicit **Install and restart** action on every supported platform. An
+ordinary app quit never installs a pending update. The downloaded update remains
+accessible from the header and Settings after choosing **Later**, including when
+the startup dialog was closed before the download finished. Settings reads the
+current main-process status when reopened instead of waiting for another event.
+
 Before installing a Beta build, the desktop app requires Recovery to be
 configured and commits a full encrypted, verified `nodus-pre-update-*` snapshot.
 The snapshot records the installed app/schema version and the target version in

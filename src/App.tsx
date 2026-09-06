@@ -40,6 +40,9 @@ import { hasPendingWhatsNew, WhatsNewModal } from './components/WhatsNewModal';
 import { TutorialVideosUpdateTour } from './components/TutorialVideosGuide';
 import { PlatformHighlightsUpdateTour } from './components/PlatformHighlightsGuide';
 import { ToolkitBetaUpdateTour } from './components/ToolkitBetaGuide';
+import { useUpdateProgress } from './useUpdateProgress';
+import { pendingUpdateVersion, updateInstallBusy } from './updateStatus';
+import { UpdateReadyNotice } from './components/UpdateReadyNotice';
 import { StartupUpdateModal } from './components/StartupUpdateModal';
 import { AiModelRequiredModal } from './components/AiModelRequiredModal';
 import { MobileTeaserGuide } from './components/MobileTeaserGuide';
@@ -191,6 +194,10 @@ export function App() {
   // Set once the startup update check is done with the screen, so the one-time Nodi
   // choice can queue up behind it instead of fighting it for the foreground.
   const [updateSettled, setUpdateSettled] = useState(false);
+  const [updateProgress, setUpdateProgress] = useUpdateProgress();
+  const [deferredUpdate, setDeferredUpdate] = useState<string | null>(null);
+  const readyVersion = pendingUpdateVersion(updateProgress);
+  const updateNoticeKey = readyVersion ? `${readyVersion}${updateProgress?.errorCode ?? ''}` : null;
   // Whether this RUN began before the essential guide had ever been completed — i.e.
   // whether the person at the keyboard is meeting Nodus for the first time. Captured
   // from the first settings read and never recomputed, because both flags the
@@ -1492,6 +1499,13 @@ export function App() {
             onClick={() => void toggleTheme()}
             dataTour="theme-toggle"
           />
+          {readyVersion && <HeaderAction
+            icon="download"
+            label={updateProgress?.status === 'backing-up' ? t('Protegiendo tus datos') : updateInstallBusy(updateProgress) ? t('Instalando actualización') : t('Actualización lista')}
+            title={t('Actualización lista')}
+            showLabel
+            onClick={() => setDeferredUpdate(null)}
+          />}
           {/* Queue and task progress, moved here from the bottom strip: same dropdown
               treatment as the notification centre, with a live-work badge. */}
           <span className="relative inline-flex">
@@ -1578,6 +1592,13 @@ export function App() {
           setBrowserOverlayVisible={setNotificationsBrowserOverlayVisible}
         />
       </header>
+
+      {updateSettled && updateProgress && updateNoticeKey && deferredUpdate !== updateNoticeKey && <UpdateReadyNotice
+        update={updateProgress}
+        onUpdate={setUpdateProgress}
+        onLater={() => setDeferredUpdate(updateNoticeKey)}
+        onRecovery={() => { void window.nodus.updateSettings({ recoverySetupVersion: 0 }).then(setSettings); }}
+      />}
 
       {settings.demoMode && (
         <div className="flex items-center gap-3 px-4 py-1.5 bg-amber-100 border-b border-amber-300 text-amber-800 text-xs dark:bg-amber-500/10 dark:border-amber-500/30 dark:text-amber-300">
@@ -2126,6 +2147,7 @@ export function App() {
           settings={settings}
           activeVaultType={activeVault?.type ?? null}
           onSettled={() => setUpdateSettled(true)}
+          onDefer={(version) => setDeferredUpdate(version)}
         />
       )}
 

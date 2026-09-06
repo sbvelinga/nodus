@@ -8307,6 +8307,13 @@ export const PT: Record<string, string> = {
   "Quitar modelo": "Remover modelo",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "O servidor não publica modelos e ainda não escreveste nenhum.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Este fornecedor gera texto, não embeddings. Para a pesquisa semântica escolhe outro fornecedor nas Definições.",
+  "Instalar y reiniciar": "Instalar e reiniciar",
+  "Más tarde": "Mais tarde",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "A atualização {version} está pronta. Podes instalá-la e reiniciar quando quiseres.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "Podes continuar a trabalhar. O Nodus só reiniciará quando escolheres instalar a atualização.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Não foi possível instalar a atualização. Podes tentar novamente.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "A atualização anterior não foi instalada. Procura atualizações para tentar novamente.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Não foi possível transferir a atualização. Verifica a tua ligação e tenta novamente.",
 
   // Spatial argument map.
   "CARTOGRAFÍA DEL ARGUMENTO": "CARTOGRAFIA DO ARGUMENTO",

@@ -8115,6 +8115,13 @@ export const TR: Record<string, string> = {
   "Quitar modelo": "Modeli kaldır",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "Sunucu model yayımlamıyor ve henüz hiçbirini yazmadınız.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Bu sağlayıcı metin üretir, gömme (embedding) üretmez. Anlamsal arama için Ayarlar’dan başka bir sağlayıcı seçin.",
+  "Instalar y reiniciar": "Yükle ve yeniden başlat",
+  "Más tarde": "Daha sonra",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "{version} güncellemesi hazır. İstediğiniz zaman yükleyip yeniden başlatabilirsiniz.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "Çalışmaya devam edebilirsiniz. Nodus yalnızca güncellemeyi yüklemeyi seçtiğinizde yeniden başlatılır.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Güncelleme yüklenemedi. Yeniden deneyebilirsiniz.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "Önceki güncelleme yüklenmedi. Yeniden denemek için güncellemeleri kontrol edin.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Güncelleme indirilemedi. Bağlantınızı kontrol edip yeniden deneyin.",
 
   // Spatial argument map.
   "CARTOGRAFÍA DEL ARGUMENTO": "ARGÜMAN HARİTASI",

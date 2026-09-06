@@ -22,7 +22,6 @@ import type {
   RecoveryHealth,
   StudyDataOverview,
   SupersededEntry,
-  UpdateProgressEvent,
   VaultSummary,
   VaultType,
 } from '@shared/types';
@@ -57,7 +56,8 @@ import { TESTIMONY_GROUPS } from '../components/TestimonySidebar';
 import { ACCESS_LEVELS as TESTIMONY_ACCESS_LEVELS, ATTRIBUTION_MODES as TESTIMONY_ATTRIBUTION_MODES } from '@shared/testimonies';
 import { ACCESS_LEVEL_LABEL as TESTIMONY_ACCESS_LEVEL_LABEL, ATTRIBUTION_MODE_LABEL as TESTIMONY_ATTRIBUTION_MODE_LABEL } from '@shared/testimonyLabels';
 import { errorText, t, tx } from '../i18n';
-import { updateStatusMessage } from '../updateStatus';
+import { canInstallUpdate, installUpdateManually, pendingUpdateVersion, updateStatusMessage } from '../updateStatus';
+import { useUpdateProgress } from '../useUpdateProgress';
 import { ORB_COLOR_CHOICES, orbHue } from '@shared/nodiOrb';
 import { NODI_DEFAULT_SCALE, NODI_SIZE_SCALES } from '@shared/nodiSize';
 import { effectiveSidebarHidden, isViewAllowedForVaultType } from '@shared/vaultTypes';
@@ -182,7 +182,8 @@ export function Settings({
   const [resetting, setResetting] = useState(false);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState<string | null>(null);
-  const [updateProgress, setUpdateProgress] = useState<UpdateProgressEvent | null>(null);
+  const [updateProgress, setUpdateProgress] = useUpdateProgress();
+  const [requestingInstall, setRequestingInstall] = useState(false);
   const [confirmBetaUpdates, setConfirmBetaUpdates] = useState(false);
   const [confirmReindex, setConfirmReindex] = useState(false);
   const [pendingModelSettingsMode, setPendingModelSettingsMode] = useState<AppSettings['modelSettingsMode'] | null>(null);
@@ -302,12 +303,10 @@ export function Settings({
   const [mcpCopied, setMcpCopied] = useState<'url' | 'token' | null>(null);
 
   useEffect(() => {
-    return window.nodus.onUpdateProgress((event) => {
-      setUpdateProgress(event);
-      setUpdateMessage(updateStatusMessage(event));
-      setCheckingUpdate(event.status === 'checking');
-    });
-  }, []);
+    if (!updateProgress) return;
+    setUpdateMessage(updateStatusMessage(updateProgress));
+    setCheckingUpdate(updateProgress.status === 'checking');
+  }, [updateProgress, settings.uiLanguage]);
 
   useEffect(() => {
     if (!dataTabRequested) return;
@@ -553,15 +552,20 @@ export function Settings({
       const result = await window.nodus.checkForUpdates();
       setUpdateProgress({ ...result, at: new Date().toISOString() });
       setUpdateMessage(updateStatusMessage(result));
+    } catch {
+      setUpdateProgress((current) => ({ status: 'error', errorCode: 'update-check-failed', message: '', downloadedVersion: pendingUpdateVersion(current), version: current?.version, at: new Date().toISOString() }));
     } finally {
       setCheckingUpdate(false);
     }
   };
 
   const installUpdate = async () => {
-    const result = await window.nodus.installUpdate();
-    setUpdateProgress({ ...result, at: new Date().toISOString() });
+    if (requestingInstall) return;
+    setRequestingInstall(true);
+    const result = await installUpdateManually(updateProgress);
+    setUpdateProgress(result);
     setUpdateMessage(updateStatusMessage(result));
+    setRequestingInstall(false);
   };
 
   const enableBetaUpdates = async () => {
@@ -813,7 +817,7 @@ export function Settings({
   const updateBusy = updateProgress?.status === 'downloading'
     || updateProgress?.status === 'backing-up'
     || updateProgress?.status === 'installing';
-  const updateDownloaded = updateProgress?.status === 'downloaded';
+  const updateDownloaded = canInstallUpdate(updateProgress);
   const normalizedSettingsQuery = normalizeSettingsText(settingsQuery);
   const settingsSearchActive = normalizedSettingsQuery.length > 0;
   const visibleSettingsSection = (tab: SettingsTabId, title: string, keywords: string): boolean => {
@@ -1790,8 +1794,8 @@ export function Settings({
             </div>
             <div className="flex gap-2">
               {updateDownloaded && (
-                <button className="btn btn-primary" onClick={installUpdate}>
-                  <Icon name="refresh" /> {t('Reiniciar')}
+                <button className="btn btn-primary" onClick={installUpdate} disabled={requestingInstall}>
+                  <Icon name="refresh" /> {t('Instalar y reiniciar')}
                 </button>
               )}
               <button className={ABOUT_ACTION_BUTTON_CLASS} onClick={checkForUpdates} disabled={checkingUpdate || updateBusy}>

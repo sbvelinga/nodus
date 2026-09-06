@@ -7261,9 +7261,15 @@ export type UpdateCheckStatus =
 
 export type UpdateErrorCode =
   | 'pre-update-backup-required'
-  | 'pre-update-backup-failed';
+  | 'pre-update-backup-failed'
+  | 'update-check-failed'
+  | 'update-download-failed'
+  | 'update-install-failed'
+  | 'update-install-incomplete';
 
 export interface UpdateCheckResponse {
+  /** Verified download still available for an explicit install, including after an error. */
+  downloadedVersion?: string | null;
   status: UpdateCheckStatus;
   message: string;
   errorCode?: UpdateErrorCode;
@@ -8874,6 +8880,7 @@ export interface NodusApi extends ProsopographyApi, TestimoniesApi, ToolkitApi, 
   // app updates
   checkForUpdates(): Promise<UpdateCheckResponse>;
   installUpdate(): Promise<UpdateCheckResponse>;
+  getUpdateStatus(): Promise<UpdateProgressEvent | null>;
   onUpdateProgress(cb: (event: UpdateProgressEvent) => void): () => void;
 
   // macOS dock icon (dynamic: follows theme + active vault). No-op elsewhere.

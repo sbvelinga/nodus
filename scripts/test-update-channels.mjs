@@ -68,7 +68,7 @@ test('a rejected older stable feed cannot become an update prompt in a beta buil
 test('opting out cancels a pending prerelease and blocks its installation', async () => {
   const [main, ipc] = await Promise.all([read('electron/main.ts'), read('electron/ipc.ts')]);
   assert.match(main, /activeUpdateCancellationToken\?\.cancel\(\)/);
-  assert.match(main, /suppressAutoInstallOnQuitUntilRestart = true/);
+  assert.doesNotMatch(main, /autoUpdater\.autoInstallOnAppQuit = (?!false)/, 'install-on-quit stays disabled across every channel');
   assert.match(main, /isPrereleaseVersion\(downloadedUpdateVersion\) && !getSettings\(\)\.betaUpdates/);
   assert.match(ipc, /updateChannelChanged\(next\.betaUpdates\)/);
 });
