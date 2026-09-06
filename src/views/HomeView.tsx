@@ -157,7 +157,7 @@ export function HomeView({
   }
 
   return (
-    <div className="h-full overflow-y-auto bg-neutral-950/10 p-4 sm:p-6 lg:p-8">
+    <div className="home-dashboard h-full overflow-y-auto p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
       <div className="mb-5">
         <HomeIntroCard
@@ -182,7 +182,7 @@ export function HomeView({
 
       <section className="card home-panel-card mb-5 border-indigo-800/70 p-5 shadow-sm shadow-black/10 sm:p-6">
         <div className="flex flex-wrap items-start gap-5">
-          <div className="min-w-[18rem] flex-1">
+          <div className="min-w-0 basis-72 flex-1">
             <div className="text-xs uppercase text-neutral-500 mb-1">{t('Siguiente paso recomendado')}</div>
             <h2 className="text-xl font-semibold tracking-tight">{recommendation.title}</h2>
             <p className="mt-2 max-w-3xl text-sm leading-6 text-neutral-400">{recommendation.body}</p>
@@ -216,7 +216,7 @@ export function HomeView({
         />
       )}
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="home-status-grid">
         <StatusCard
           title={t('Corpus')}
           icon="book"
@@ -226,7 +226,7 @@ export function HomeView({
           action={<button className="btn btn-ghost home-card-action border border-neutral-700" onClick={() => onNavigate('library')}>{t('Biblioteca')}</button>}
         >
           <ProgressLine label={t('con tag de lectura')} value={stats.readTaggedWorks} total={stats.totalWorks} />
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="home-status-badges flex flex-wrap gap-1.5 mt-3">
             <Badge>{tx('{n} colecciones', { n: settings.monitoredCollections.length })}</Badge>
             <Badge>{settings.syncMode === 'realtime' ? t('tiempo real') : t('manual')}</Badge>
           </div>
@@ -245,7 +245,7 @@ export function HomeView({
         >
           <ProgressLine label={t('temas')} value={stats.lightDone} total={stats.totalWorks} />
           <ProgressLine label={t('ideas')} value={stats.deepDone} total={stats.deepTarget} />
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="home-status-badges flex flex-wrap gap-1.5 mt-3">
             {stats.lightPending > 0 && <Badge color="amber">{tx('{n} temas en cola', { n: stats.lightPending })}</Badge>}
             {stats.deepPending > 0 && <Badge color="amber">{tx('{n} ideas en cola', { n: stats.deepPending })}</Badge>}
             {stats.failedWorks > 0 && <Badge color="red">{tx('{n} fallos', { n: stats.failedWorks })}</Badge>}
@@ -262,7 +262,7 @@ export function HomeView({
           action={<button className="btn btn-ghost home-card-action border border-neutral-700" onClick={() => onNavigate('library')}>{t('Ver obras')}</button>}
         >
           <ProgressLine label={t('progreso')} value={stats.queueDone + stats.queueFailed} total={snapshot?.queue?.total ?? 0} />
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="home-status-badges flex flex-wrap gap-1.5 mt-3">
             {snapshot?.queue?.paused && <Badge color="amber">{t('pausada')}</Badge>}
             {stats.queueActive && <Badge color="indigo">{t('activa')}</Badge>}
             {stats.queueFailed > 0 && <Badge color="red">{tx('{n} fallidos', { n: stats.queueFailed })}</Badge>}
@@ -284,7 +284,7 @@ export function HomeView({
           action={<button className="btn btn-ghost home-card-action border border-neutral-700" onClick={() => onNavigate('graph')}>{t('Abrir grafo')}</button>}
         >
           <ProgressLine label={t('relaciones')} value={stats.semanticEdges} total={Math.max(stats.semanticEdges, stats.ideaNodes)} />
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="home-status-badges flex flex-wrap gap-1.5 mt-3">
             <Badge>{tx('{n} temas', { n: stats.themeNodes })}</Badge>
             <Badge>{tx('{n} relaciones', { n: stats.semanticEdges })}</Badge>
             <Badge color={stats.contradictions > 0 ? 'red' : 'neutral'}>{tx('{n} contradicciones', { n: stats.contradictions })}</Badge>
@@ -334,7 +334,7 @@ export function HomeView({
           action={<button className="btn btn-ghost home-card-action border border-neutral-700" onClick={() => onNavigate('settings')}>{t('Ajustes')}</button>}
         >
           <ProgressLine label={t('embeddings')} value={stats.embeddedIdeas} total={stats.totalEmbeddableIdeas} />
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="home-status-badges flex flex-wrap gap-1.5 mt-3">
             {settings.extractionModel && <Badge color="green">{tx('Extracción: {provider}', { provider: settings.extractionModel.provider })}</Badge>}
             {settings.synthesisModel && <Badge color="indigo">{tx('Síntesis: {provider}', { provider: settings.synthesisModel.provider })}</Badge>}
             {stats.embeddingIncompleteWorks > 0 && <Badge color="amber">{tx('{n} obras por indexar', { n: stats.embeddingIncompleteWorks })}</Badge>}
@@ -600,7 +600,7 @@ function CorpusHealthPanel({
         </span>
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
+      <div className="home-metric-grid">
         <HealthBucketTile
           icon="book"
           label={t('Sin texto')}
@@ -680,7 +680,7 @@ function CorpusHealthPanel({
         </div>
       )}
       {actions.length === 0 && (
-        <p className="mt-3 text-xs text-emerald-400/80">
+        <p className="mt-3 text-xs text-emerald-400">
           {t('Todo en orden: no hay análisis, indexado ni recuperación pendientes.')}
         </p>
       )}
@@ -756,31 +756,20 @@ function StatusCard({
     red: 'text-red-300 bg-red-900/50',
     cyan: 'text-cyan-300 bg-cyan-900/50',
   }[tone];
-  const toneBorderClass = {
-    indigo: 'hover:border-indigo-700/70',
-    green: 'hover:border-emerald-700/70',
-    amber: 'hover:border-amber-700/70',
-    red: 'hover:border-red-700/70',
-    cyan: 'hover:border-cyan-700/70',
-  }[tone];
   return (
-    <section className={`card home-status-card relative flex h-full min-h-[15rem] flex-col border-neutral-800/90 p-5 shadow-sm shadow-black/10 transition-all hover:-translate-y-0.5 ${toneBorderClass} hover:shadow-lg hover:shadow-black/10`} data-home-tone={tone}>
-      <div className="flex items-start gap-3 border-b border-neutral-800/80 pb-4">
-        <span className={`home-status-icon inline-flex h-6 w-6 items-center justify-center rounded-md ${toneClass}`}>
-          <Icon name={icon} size={14} />
+    <section className="card home-status-card home-accent-card flex h-full min-w-0 flex-col p-5" data-home-tone={tone}>
+      <div className="home-status-heading">
+        <span className={`home-status-icon inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${toneClass}`}>
+          <Icon name={icon} size={18} />
         </span>
-        <div className="min-w-0 flex-1">
-          <h2 className="pr-24 text-lg font-semibold leading-6 tracking-tight">{title}</h2>
-          <div className="mt-4 flex min-w-0 flex-nowrap items-baseline gap-x-2">
-            {/* Numeric metrics get the big display size; status words (lista/pendiente)
-                would look disproportionate at that size, so render them smaller. */}
-            <span className={`shrink-0 font-semibold leading-none tabular-nums ${typeof metric === 'string' && !/\d/.test(metric) ? 'text-sm' : 'text-base'}`}>{metric}</span>
-            <span className="min-w-0 truncate whitespace-nowrap text-[11px] leading-4 text-neutral-400">{metricLabel}</span>
-          </div>
-        </div>
-        {action && <div className="absolute right-5 top-5 z-10">{action}</div>}
+        <h2 className="home-status-title text-base font-semibold leading-6">{title}</h2>
       </div>
-      <div className="mt-5 flex-1">{children}</div>
+      <div className="home-status-summary mt-4">
+        <span className={`block font-semibold tabular-nums leading-tight ${typeof metric === 'string' && !/\d/.test(metric) ? 'text-xl' : 'text-3xl'}`}>{metric}</span>
+        <span className="mt-1 block text-xs leading-5 text-neutral-400">{metricLabel}</span>
+      </div>
+      <div className="home-status-content mt-4 flex-1 border-t border-neutral-800 pt-4">{children}</div>
+      {action && <div className="home-status-action mt-5 flex flex-wrap">{action}</div>}
     </section>
   );
 }
@@ -802,8 +791,8 @@ function ProgressLine({ label, value, total }: { label: string; value: number; t
 
 function MiniMetric({ label, value }: { label: string; value: number }) {
   return (
-    <div className="home-dashboard-tile rounded-xl border border-neutral-800 bg-neutral-900/20 px-3 py-2.5">
-      <div className="text-xs text-neutral-500">{label}</div>
+    <div className="home-dashboard-tile min-w-0 rounded-xl border px-3 py-2.5">
+      <div className="home-metric-label text-xs text-neutral-500">{label}</div>
       <div className="text-lg font-semibold tabular-nums">{value}</div>
     </div>
   );
@@ -1059,7 +1048,7 @@ export function GenealogyHome({
   })();
 
   return (
-    <div className="h-full overflow-y-auto bg-neutral-950/10 p-4 sm:p-6 lg:p-8">
+    <div className="home-dashboard h-full overflow-y-auto p-4 sm:p-6 lg:p-8">
       <div className="mx-auto max-w-7xl">
       <div className="mb-5">
         <HomeIntroCard
@@ -1076,9 +1065,9 @@ export function GenealogyHome({
         </div>
       )}
 
-      <section className="card mb-5 border-indigo-800/70 p-5 shadow-sm shadow-black/10 sm:p-6">
+      <section className="card home-panel-card mb-5 border-indigo-800/70 p-5 shadow-sm shadow-black/10 sm:p-6">
         <div className="flex flex-wrap items-start gap-5">
-          <div className="min-w-[18rem] flex-1">
+          <div className="min-w-0 basis-72 flex-1">
             <div className="text-xs uppercase text-neutral-500 mb-1">{t('Siguiente paso recomendado')}</div>
             <h2 className="text-lg font-semibold">{recommendation.title}</h2>
             <p className="text-sm text-neutral-400 mt-1 max-w-2xl">{recommendation.body}</p>
@@ -1102,7 +1091,7 @@ export function GenealogyHome({
         </div>
       </section>
 
-      <div className="grid grid-cols-1 gap-5 md:grid-cols-2 xl:grid-cols-4">
+      <div className="home-status-grid">
         <StatusCard
           title={t('Personas')}
           icon="users"
@@ -1128,7 +1117,7 @@ export function GenealogyHome({
           metricLabel={t('vínculos de parentesco')}
           action={<button className="btn btn-ghost home-card-action border border-neutral-700" onClick={() => onNavigate('tree')}>{t('Ver árbol')}</button>}
         >
-          <div className="flex flex-wrap gap-1.5 mt-1">
+          <div className="home-status-badges flex flex-wrap gap-1.5 mt-1">
             <Badge>{tx('{n} personas', { n: s?.persons ?? 0 })}</Badge>
             {s && s.suggestions > 0 ? (
               <Badge color="amber">{tx('{n} parentescos sugeridos', { n: s.suggestions })}</Badge>
@@ -1182,7 +1171,7 @@ export function GenealogyHome({
           action={<button className="btn btn-ghost home-card-action border border-neutral-700" onClick={() => onNavigate('archive')}>{t('Abrir')}</button>}
         >
           <ProgressLine label={t('indexados')} value={s?.indexed ?? 0} total={s?.indexTotal ?? 0} />
-          <div className="flex flex-wrap gap-1.5 mt-3">
+          <div className="home-status-badges flex flex-wrap gap-1.5 mt-3">
             <Badge>{tx('{n} carpetas', { n: s?.folders ?? 0 })}</Badge>
           </div>
           <p className="text-xs text-neutral-500 mt-3">
@@ -1237,7 +1226,7 @@ export function DatabasesHome({
 }) {
   const totalRows = databases.reduce((sum, d) => sum + d.rowCount, 0);
   return (
-    <div className="h-full overflow-y-auto">
+    <div className="home-dashboard h-full overflow-y-auto">
      <div className="mx-auto max-w-7xl p-4 sm:p-6 lg:p-8">
       <div className="mb-5">
         <HomeIntroCard
@@ -1285,11 +1274,11 @@ export function DatabasesHome({
             </div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="home-status-grid">
             {databases.map((db) => (
               <button
                 key={db.id}
-                className="card home-panel-card min-h-[8rem] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-600/70 hover:shadow-lg"
+                className="card home-accent-card min-h-[8rem] p-5 text-left"
                 onClick={() => onOpenDatabase(db.id)}
               >
                 <div className="flex items-center gap-2">
@@ -1306,8 +1295,8 @@ export function DatabasesHome({
         )}
       </section>
 
-      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <button className="card home-panel-card min-h-[8rem] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-600/70 hover:shadow-lg" onClick={onOpenAnalysis}>
+      <section className="home-status-grid">
+        <button className="card home-accent-card min-h-[8rem] p-5 text-left" onClick={onOpenAnalysis}>
           <div className="flex items-center gap-2 font-medium">
             <Icon name="chartBar" className="text-indigo-400" /> {t('Análisis')}
           </div>
@@ -1315,7 +1304,7 @@ export function DatabasesHome({
             {t('Estadísticas e informes con IA sobre una base de datos.')}
           </p>
         </button>
-        <button className="card home-panel-card min-h-[8rem] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-indigo-600/70 hover:shadow-lg" onClick={onOpenChat}>
+        <button className="card home-accent-card min-h-[8rem] p-5 text-left" onClick={onOpenChat}>
           <div className="flex items-center gap-2 font-medium">
             <Icon name="chat" className="text-indigo-400" /> {t('Chat de datos')}
           </div>
@@ -1323,7 +1312,7 @@ export function DatabasesHome({
             {tx('Pregunta a tus datos ({n} entradas en total).', { n: totalRows.toLocaleString() })}
           </p>
         </button>
-        <button data-testid="open-database-deep-research" className="card home-panel-card min-h-[8rem] p-5 text-left transition-all hover:-translate-y-0.5 hover:border-cyan-600/70 hover:shadow-lg" onClick={onOpenDeepResearch}>
+        <button data-testid="open-database-deep-research" className="card home-accent-card min-h-[8rem] p-5 text-left" onClick={onOpenDeepResearch}>
           <div className="flex items-center gap-2 font-medium">
             <Icon name="telescope" className="text-cyan-500" /> {t('Deep Research')}
           </div>
