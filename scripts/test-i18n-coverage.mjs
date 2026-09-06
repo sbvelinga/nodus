@@ -151,6 +151,8 @@ function walk(dir) {
 
 // Data tables whose Spanish values are handed to t() from somewhere else.
 const INDIRECT_KEY_SOURCES = [
+  // Exploration errors are caught by the workspace and translated through errorText().
+  { file: 'src/stellarGraph/exploration.ts', pattern: /throw new Error\((["'])((?:\\.|(?!\1).)*?)\1\)/g },
   // Nodi's notification catalogue. Electron stores the KEY and its values, and the
   // panel renders them through notificationLine() → tx(), so none of these sentences
   // ever appears literally inside a t() call. Leaving one untranslated is what made
@@ -164,6 +166,8 @@ const INDIRECT_KEY_SOURCES = [
   { file: 'electron/cloudflare/pricing.ts', pattern: /\bline\('[^']*',\s*(')((?:\\.|(?!\1).)*?)\1/g },
   { file: 'electron/cloudflare/pricing.ts', pattern: /\bline\('[^']*',\s*'[^']*',\s*[^,]+,\s*(')((?:\\.|(?!\1).)*?)\1/g },
   // Sidebar + command palette labels, rendered as t(n.label) / t(g.label) in App.tsx.
+  { file: 'src/stellarGraph/palette.ts', pattern: /\blabel:\s*(["'])((?:\\.|(?!\1).)*?)\1/g },
+  { file: 'src/stellarGraph/palette.ts', pattern: /^  (?:claim|finding|construct|method|framework): (["'])(?!#)((?:\\.|(?!\1).)*?)\1/gm },
   { file: 'src/navigation.ts', pattern: /\blabel:\s*(["'])((?:\\.|(?!\1).)*?)\1/g },
   // Settings tab labels, rendered as t(tab.label).
   { file: 'src/views/Settings.tsx', pattern: /\blabel:\s*(["'])((?:\\.|(?!\1).)*?)\1/g },
@@ -617,6 +621,17 @@ test('no translation is empty', () => {
     const blank = Object.entries(table).filter(([, value]) => !String(value).trim()).map(([key]) => key);
     assert.deepEqual(blank, [], `${name} has blank translations`);
   }
+});
+
+test('graph loading failures reach every locale through the runtime error boundary', () => {
+  const { setActiveLang, errorText } = loadModule('src/i18n.ts');
+  const key = 'No se pudieron cargar todas las conexiones. Vuelve a intentarlo.';
+  for (const { lang, table } of TRANSLATIONS) {
+    setActiveLang(lang);
+    assert.equal(errorText(new Error(key)), table[key], `${lang}: graph error must use its own translation`);
+  }
+  setActiveLang('es');
+  assert.equal(errorText(new Error(key)), key);
 });
 
 test('stored image-generation failures are translated, not flattened or leaked', () => {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { QueueProgress, QueueKind } from '@shared/types';
 import { Icon } from './ui';
@@ -27,15 +27,10 @@ function queueTitle(item: { kind: QueueKind; title: string }): string {
   return item.kind === 'bridge' ? tr(item.title) : item.title;
 }
 
-export function QueueBar() {
-  const [progress, setProgress] = useState<QueueProgress | null>(null);
+export function QueueBar({ progress }: { progress: QueueProgress | null }) {
   const [expanded, setExpanded] = useState(false);
   const [confirm, setConfirm] = useState<null | 'clear' | 'stop'>(null);
 
-  useEffect(() => {
-    void window.nodus.getQueue().then(setProgress);
-    return window.nodus.onQueueProgress(setProgress);
-  }, []);
 
   const ticking = Boolean(progress && (
     progress.maintenanceRunning
@@ -62,7 +57,7 @@ export function QueueBar() {
   const itemElapsed = elapsedTimeLabel(running?.started_at, running?.finished_at, now);
 
   return (
-    <div className="border-t border-neutral-200 bg-neutral-100/80 backdrop-blur px-4 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/80">
+    <div className="border-t border-neutral-200 bg-neutral-100/80 backdrop-blur px-4 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/80" data-testid="queue-progress-bar">
       {pausedReason && (
         <div className="mb-2 flex items-center gap-2 rounded-lg bg-amber-50 border border-amber-200 px-3 py-1.5 text-amber-700 text-xs dark:bg-amber-950/60 dark:border-amber-800/60 dark:text-amber-300">
           <Icon name="warning" size={14} className="shrink-0" />
@@ -78,12 +73,12 @@ export function QueueBar() {
           <button className="btn btn-ghost h-7 px-2" onClick={() => window.nodus.resumeQueue()}>{t('Reintentar')}</button>
         </div>
       )}
-      <div className="flex items-center gap-3">
+      <div className="flex flex-wrap items-center gap-3">
         <button className="btn-ghost btn" onClick={() => setExpanded((e) => !e)}>
           {expanded ? '▾' : '▸'} {t('Cola')}
         </button>
-        <div className="flex-1">
-          <div className="flex justify-between text-xs text-neutral-400 mb-1">
+        <div className="order-last min-w-0 basis-full">
+          <div className="flex flex-wrap justify-between gap-2 text-xs text-neutral-400 mb-1">
             <span>
               {current ? (
                 <>

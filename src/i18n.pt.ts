@@ -1,3 +1,4 @@
+import { STELLAR_GRAPH_TRANSLATIONS } from './i18n.stellarGraph';
 /**
  * pt translations keyed by the Spanish source string (see {@link ./i18n}).
  * Key order mirrors {@link ./i18n.en} so the tables can be diffed side by side.
@@ -56,6 +57,7 @@ import { DATABASE_DEEP_RESEARCH_TRANSLATIONS } from './i18n.databaseDeepResearch
 import { ACADEMIC_TOUR_TRANSLATIONS } from './i18n.academicTour';
 
 export const PT: Record<string, string> = {
+  ...STELLAR_GRAPH_TRANSLATIONS["pt"],
   ...ACADEMIC_TOUR_TRANSLATIONS.pt,
   ...ADAPTIVE_CONCURRENCY_TRANSLATIONS.pt,
   ...DATABASE_DEEP_RESEARCH_TRANSLATIONS.pt,
@@ -2109,6 +2111,9 @@ export const PT: Record<string, string> = {
   'Corrígelo en Ajustes y pulsa': 'Corrija-o nas Definições e clique em',
   'Reanudar': 'Retomar',
   'Cola': 'Fila',
+  'Cola y tareas': 'Fila e tarefas',
+  "Extracción de texto": "Extração de texto",
+  'Sin tareas ni colas en curso.': 'Sem tarefas nem filas em curso.',
   'Procesando:': 'A processar:',
   'Cola en pausa': 'Fila em pausa',
   'En cola…': 'Em fila…',
@@ -8302,4 +8307,33 @@ export const PT: Record<string, string> = {
   "Quitar modelo": "Remover modelo",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "O servidor não publica modelos e ainda não escreveste nenhum.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Este fornecedor gera texto, não embeddings. Para a pesquisa semântica escolhe outro fornecedor nas Definições.",
+
+  // Spatial argument map.
+  "CARTOGRAFÍA DEL ARGUMENTO": "CARTOGRAFIA DO ARGUMENTO",
+  "Todas las ramas": "Todos os ramos",
+  "IDEA CENTRAL": "IDEIA CENTRAL",
+  "SIGUE EL HILO": "SEGUE O FIO",
+  "Despliega una rama. Contrasta sus ideas.": "Expande um ramo. Compara as suas ideias.",
+  "{n} ideas visibles": "{n} ideias visíveis",
+  "Relaciones respecto a la idea de origen": "Relações com a ideia de origem",
+  "Arrastra para explorar · Rueda para ampliar": "Arrasta para explorar · Roda para ampliar",
+  "Mapa visual": "Mapa visual",
+  "No se pudo activar la pantalla completa.": "Não foi possível ativar o ecrã inteiro.",
+  "Zoom automático": "Zoom automático",
+  "Centrar y ampliar la tarjeta al seleccionarla": "Centrar e ampliar o cartão selecionado",
+  "Vista anterior": "Vista anterior",
+  "Recuperar el encuadre anterior sin cerrar las ramas": "Restaurar a vista anterior sem recolher os ramos",
+  "AÑADE IDEAS AL LIENZO": "ADICIONA IDEIAS À TELA",
+  "Quitar idea del lienzo": "Retirar ideia da tela",
+  "Añadir idea al lienzo": "Adicionar ideia à tela",
+  "Grafos abiertos": "Grafos abertos",
+  "Grafo {n}": "Grafo {n}",
+  "Cerrar grafo {n}": "Fechar grafo {n}",
+  "Nuevo grafo": "Novo grafo",
+  "{n} conexiones directas cargadas. Añade otra idea con +.": "{n} ligações diretas carregadas. Adiciona outra ideia com +.",
+  "Lienzo vacío. Busca una idea para empezar.": "Tela vazia. Pesquisa uma ideia para começar.",
+  "Idea retirada del lienzo.": "Ideia retirada da tela.",
+  "Quitar todas las ideas y conexiones del lienzo": "Retirar todas as ideias e ligações da tela",
+  "Relaciones por idea": "Relações por ideia",
+  "No se pudieron cargar todas las conexiones. Vuelve a intentarlo.": "Não foi possível carregar todas as ligações. Tenta novamente.",
 };
