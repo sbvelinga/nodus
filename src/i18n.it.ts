@@ -7765,4 +7765,11 @@ export const IT: Record<string, string> = {
   "Quitar modelo": "Rimuovi modello",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "Il server non pubblica modelli e non ne hai ancora scritto nessuno.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Questo fornitore genera testo, non embedding. Per la ricerca semantica scegli un altro fornitore nelle Impostazioni.",
+  "Instalar y reiniciar": "Installa e riavvia",
+  "Más tarde": "Più tardi",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "L’aggiornamento {version} è pronto. Puoi installarlo e riavviare quando vuoi.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "Puoi continuare a lavorare. Nodus si riavvierà solo quando sceglierai di installare l’aggiornamento.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Impossibile installare l’aggiornamento. Puoi riprovare.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "L’aggiornamento precedente non è stato installato. Cerca aggiornamenti per riprovare.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Impossibile scaricare l’aggiornamento. Controlla la connessione e riprova.",
 };

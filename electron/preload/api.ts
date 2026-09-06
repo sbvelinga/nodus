@@ -261,6 +261,7 @@ export const nodusApi: NodusApi = {
 
   checkForUpdates: () => ipcRenderer.invoke('updates:check'),
   installUpdate: () => ipcRenderer.invoke('updates:install'),
+  getUpdateStatus: () => ipcRenderer.invoke('updates:status'),
   onUpdateProgress: (cb) => {
     const listener = (_e: unknown, event: UpdateProgressEvent) => cb(event);
     ipcRenderer.on('updates:progress', listener);

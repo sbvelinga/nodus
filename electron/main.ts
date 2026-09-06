@@ -153,7 +153,6 @@ let lastDownloadProgressEmitAt = 0;
 let lastDownloadProgressPercent = -1;
 let installUpdateTimer: NodeJS.Timeout | null = null;
 let useUnsignedMacUpdaterFallback = false;
-let suppressAutoInstallOnQuitUntilRestart = false;
 let autoBackupTimer: NodeJS.Timeout | null = null;
 let autoBackupFirstTimer: NodeJS.Timeout | null = null;
 let autoBackupRunning = false;
@@ -386,6 +385,7 @@ async function reportInterruptedUpdateInstall(): Promise<void> {
   if (state.version && state.version === app.getVersion()) return; // it did land
   emitUpdate({
     status: 'error',
+    errorCode: 'update-install-incomplete',
     message: state.version
       ? `La actualización a Nodus ${state.version} se descargó pero no llegó a instalarse, así que sigues en la ${app.getVersion()}. Vuelve a intentarlo desde Ajustes.`
       : 'Una actualización descargada no llegó a instalarse. Vuelve a intentarlo desde Ajustes.',
@@ -395,9 +395,9 @@ async function reportInterruptedUpdateInstall(): Promise<void> {
 }
 
 function emitUpdate(event: UpdateCheckResponse): UpdateCheckResponse {
-  lastUpdateEvent = { ...event, at: new Date().toISOString() };
+  lastUpdateEvent = { ...event, downloadedVersion: downloadedUpdateVersion, at: new Date().toISOString() };
   mainWindow?.webContents.send('updates:progress', lastUpdateEvent);
-  return event;
+  return lastUpdateEvent;
 }
 
 /** Stop a prerelease already in flight when the user leaves the beta channel. */
@@ -417,7 +417,6 @@ function discardPendingPrereleaseUpdate(): boolean {
   activeUpdateVersion = null;
   // A native updater may already have staged the package by the time the setting
   // changes. Do not let an ordinary quit install it behind the stable preference.
-  suppressAutoInstallOnQuitUntilRestart = true;
   autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.autoDownload = false;
   console.log('[updates] discarded pending prerelease after beta opt-out');
@@ -556,6 +555,7 @@ async function checkForUpdates(reason: string): Promise<UpdateCheckResponse> {
   configureUpdateChannel(getSettings().betaUpdates, reason);
   autoUpdater.autoDownload = true;
   if (installingUpdate) {
+    if (lastUpdateEvent?.status === 'backing-up' || lastUpdateEvent?.status === 'installing') return lastUpdateEvent;
     return emitUpdate({
       status: 'installing',
       message: 'Actualización descargada. Nodus se está cerrando para instalarla.',
@@ -566,7 +566,7 @@ async function checkForUpdates(reason: string): Promise<UpdateCheckResponse> {
   if (downloadedUpdateVersion) {
     return emitUpdate({
       status: 'downloaded',
-      message: `Actualización ${downloadedUpdateVersion} descargada. Haz clic en "Instalar ahora" para reiniciar con la nueva versión.`,
+      message: `Actualización ${downloadedUpdateVersion} descargada. Puedes instalarla y reiniciar cuando quieras.`,
       version: downloadedUpdateVersion,
       progress: 100,
     });
@@ -622,6 +622,7 @@ async function checkForUpdates(reason: string): Promise<UpdateCheckResponse> {
     console.error(`[updates] check failed: ${e instanceof Error ? e.message : String(e)}`);
     return emitUpdate({
       status: 'error',
+      errorCode: 'update-check-failed',
       message: e instanceof Error ? e.message : String(e),
       version: app.getVersion(),
       progress: null,
@@ -694,7 +695,9 @@ async function installDownloadedUpdate(): Promise<UpdateCheckResponse> {
       version: targetVersion,
       progress: null,
     });
-    const backup = await runPreUpdateBackupNow(app.getVersion(), targetVersion);
+    const backup = await runPreUpdateBackupNow(app.getVersion(), targetVersion).catch((error) => ({
+      ok: false as const, message: error instanceof Error ? error.message : String(error),
+    }));
     if (prerelease && !getSettings().betaUpdates) {
       discardPendingPrereleaseUpdate();
       return emitUpdate({
@@ -742,6 +745,7 @@ async function installDownloadedUpdate(): Promise<UpdateCheckResponse> {
         installingUpdate = false;
         emitUpdate({
           status: 'error',
+          errorCode: 'update-install-failed',
           message: e instanceof Error ? e.message : String(e),
           version: downloadedUpdateVersion ?? app.getVersion(),
           progress: null,
@@ -764,10 +768,11 @@ function setupAutoUpdates(): void {
   // current ad-hoc fallback, keep electron-updater's verified ZIP and replace
   // the writable .app with our external helper instead of waiting forever for
   // a native event that macOS never delivers.
-  autoUpdater.autoInstallOnAppQuit = !useUnsignedMacUpdaterFallback;
+  // Download silently, but never install on quit: every platform uses the
+  // explicit install action and its verified-backup gate.
+  autoUpdater.autoInstallOnAppQuit = false;
   autoUpdater.autoRunAppAfterInstall = true;
   configureUpdateChannel(getSettings().betaUpdates, 'startup');
-  autoUpdater.autoInstallOnAppQuit = !useUnsignedMacUpdaterFallback && !suppressAutoInstallOnQuitUntilRestart;
   console.log(
     useUnsignedMacUpdaterFallback
       ? '[updates] using unsigned macOS fallback installer'
@@ -776,6 +781,7 @@ function setupAutoUpdates(): void {
 
   autoUpdater.on('checking-for-update', () => console.log('[updates] checking for update'));
   autoUpdater.on('update-available', (info) => {
+    if (downloadedUpdateVersion || installingUpdate) return;
     if (isPrereleaseVersion(info.version) && !getSettings().betaUpdates) {
       // Defensive race guard: a preference change can land while a network check
       // is resolving. Prevent autoDownload before checkForUpdates continues.
@@ -802,6 +808,7 @@ function setupAutoUpdates(): void {
     });
   });
   autoUpdater.on('update-not-available', (info) => {
+    if (downloadedUpdateVersion || installingUpdate) return;
     console.log(`[updates] up to date: ${info.version}`);
     if (!downloadedUpdateVersion) activeUpdateVersion = null;
     emitUpdate({
@@ -812,6 +819,7 @@ function setupAutoUpdates(): void {
     });
   });
   autoUpdater.on('download-progress', (p) => {
+    if (downloadedUpdateVersion || installingUpdate) return;
     const percent = Math.max(0, Math.min(100, p.percent ?? 0));
     const roundedPercent = Math.round(percent);
     const now = Date.now();
@@ -851,12 +859,13 @@ function setupAutoUpdates(): void {
     console.log(`[updates] downloaded ${info.version}; waiting for user to restart`);
     emitUpdate({
       status: 'downloaded',
-      message: `Actualización ${info.version} descargada. Haz clic en "Instalar ahora" para reiniciar con la nueva versión.`,
+      message: `Actualización ${info.version} descargada. Puedes instalarla y reiniciar cuando quieras.`,
       version: info.version,
       progress: 100,
     });
   });
   autoUpdater.on('error', (e) => {
+    const failedDuringInstall = installingUpdate;
     if (installUpdateTimer) {
       clearTimeout(installUpdateTimer);
       installUpdateTimer = null;
@@ -866,6 +875,7 @@ function setupAutoUpdates(): void {
     console.error(`[updates] error: ${e instanceof Error ? e.message : String(e)}`);
     emitUpdate({
       status: 'error',
+      errorCode: failedDuringInstall ? 'update-install-failed' : 'update-download-failed',
       message: e instanceof Error ? e.message : String(e),
       version: downloadedUpdateVersion ?? app.getVersion(),
       progress: null,
@@ -974,6 +984,7 @@ app.whenReady().then(async () => {
     () => checkForUpdates('manual'),
     installDownloadedUpdate,
     (betaUpdates) => configureUpdateChannel(betaUpdates, 'setting changed'),
+    () => lastUpdateEvent,
   );
   createWindow();
   // Existing installs may have one full database copy per historical schema update.

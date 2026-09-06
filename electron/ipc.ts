@@ -214,6 +214,7 @@ export function registerIpc(
   checkForUpdates: () => Promise<UpdateCheckResponse>,
   installUpdate: () => Promise<UpdateCheckResponse>,
   updateChannelChanged: (betaUpdates: boolean) => void,
+  getUpdateStatus: () => UpdateCheckResponse | null,
 ): void {
   const context = createIpcContext(getWindow);
   const { h } = context;
@@ -906,6 +907,7 @@ export function registerIpc(
 
   h('updates:check', async () => checkForUpdates());
   h('updates:install', async () => installUpdate());
+  h('updates:status', async () => getUpdateStatus());
 
   // Dynamic macOS dock icon. The renderer rasterises a themed, vault-coloured
   // Nodus mark to a PNG data URL and pushes it here; only macOS exposes

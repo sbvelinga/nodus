@@ -8588,4 +8588,11 @@ export const EN: Record<string, string> = {
   "Quitar modelo": "Remove model",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "The server publishes no models and you have not typed any yet.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "This provider generates text, not embeddings. For semantic search, pick another provider in Settings.",
+  "Instalar y reiniciar": "Install and restart",
+  "Más tarde": "Later",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "Update {version} is ready. You can install it and restart whenever you choose.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "You can keep working. Nodus will only restart when you choose to install the update.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Could not install the update. You can try again.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "The previous update was not installed. Check for updates to try again.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Could not download the update. Check your connection and try again.",
 };
