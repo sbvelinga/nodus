@@ -65,6 +65,7 @@ try {
   );
   await page.evaluate(() => window.nodus.startDocumentIndexCampaign({ includeArchived: false }));
 
+  await page.locator('[data-tour="queue"] button, button[data-tour="queue"]').first().click();
   const bar = page.getByTestId('document-index-progress-bar');
   await bar.waitFor({ state: 'visible' });
   const progress = bar.getByRole('progressbar');
