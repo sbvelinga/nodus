@@ -15,7 +15,6 @@ import type {
   McpServerStatus,
   McpTunnelStatus,
   MigrationRecoverySnapshot,
-  ModelInfo,
   NodusServerConnection,
   NodusServerOverview,
   ReplicaConnectionView,
@@ -39,8 +38,9 @@ import { BrowserSettings } from './settings/BrowserSettings';
 import { LegalDocModal } from '../components/LegalDocModal';
 import { LEGAL_DOCS, type LegalDocId } from '../legalDocs';
 import { confirm } from '../components/feedback';
-import { Icon, PROVIDER_LABELS } from '../components/ui';
+import { Icon } from '../components/ui';
 import { ModelPicker, ModelWithReasoning, SubscriptionQuotaNotice, ExtractionCapabilityNotice } from '../components/ModelPicker';
+import { EmbeddingModelControl } from '../components/EmbeddingModelControl';
 import { GeneralTextModelControl } from '../components/GeneralTextModelControl';
 import { NodiStylePicker } from '../components/nodi/NodiStylePicker';
 import { TutorialVideoGrid } from '../components/TutorialVideos';
@@ -58,7 +58,6 @@ import { ACCESS_LEVELS as TESTIMONY_ACCESS_LEVELS, ATTRIBUTION_MODES as TESTIMON
 import { ACCESS_LEVEL_LABEL as TESTIMONY_ACCESS_LEVEL_LABEL, ATTRIBUTION_MODE_LABEL as TESTIMONY_ATTRIBUTION_MODE_LABEL } from '@shared/testimonyLabels';
 import { errorText, t, tx } from '../i18n';
 import { updateStatusMessage } from '../updateStatus';
-import { DEFAULT_EMBEDDING_MODELS, EMBEDDING_PROVIDERS } from '@shared/providers';
 import { ORB_COLOR_CHOICES, orbHue } from '@shared/nodiOrb';
 import { NODI_DEFAULT_SCALE, NODI_SIZE_SCALES } from '@shared/nodiSize';
 import { effectiveSidebarHidden, isViewAllowedForVaultType } from '@shared/vaultTypes';
@@ -3948,95 +3947,6 @@ function SettingsTabButton({
   );
 }
 
-function EmbeddingModelControl({
-  settings,
-  onEmbeddingChange,
-}: {
-  settings: AppSettings;
-  onEmbeddingChange: (provider: EmbeddingProvider, model: string) => void;
-}) {
-  const [models, setModels] = useState<ModelInfo[] | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const provider = settings.embeddingProvider ?? 'openai';
-  const [modelInput, setModelInput] = useState(settings.embeddingModel);
-
-  useEffect(() => setModelInput(settings.embeddingModel), [settings.embeddingModel]);
-
-  const commitModelInput = () => {
-    const model = modelInput.trim() || DEFAULT_EMBEDDING_MODELS[provider];
-    setModelInput(model);
-    if (model !== settings.embeddingModel) onEmbeddingChange(provider, model);
-  };
-
-  const setProvider = (next: EmbeddingProvider) => {
-    setModels(null);
-    setError(null);
-    onEmbeddingChange(next, DEFAULT_EMBEDDING_MODELS[next]);
-  };
-
-  const loadModels = async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      setModels(await window.nodus.listEmbeddingModels(provider));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const shown = (models ?? []).slice(0, 300);
-
-  return (
-    <div className="w-full max-w-3xl space-y-2">
-      <div className="grid gap-2 lg:grid-cols-[11rem_minmax(13rem,1fr)_auto]">
-        <select className="input w-full" value={provider} onChange={(e) => setProvider(e.target.value as EmbeddingProvider)}>
-          {EMBEDDING_PROVIDERS.map((p) => (
-            <option key={p} value={p}>
-              {PROVIDER_LABELS[p]}
-            </option>
-          ))}
-        </select>
-        <input
-          className="input w-full min-w-0"
-          value={modelInput}
-          onChange={(e) => setModelInput(e.target.value)}
-          onBlur={commitModelInput}
-          onKeyDown={(e) => { if (e.key === 'Enter') e.currentTarget.blur(); }}
-          placeholder={DEFAULT_EMBEDDING_MODELS[provider]}
-        />
-        <button className="btn btn-ghost justify-center border border-neutral-700" onClick={loadModels} disabled={loading}>
-          {loading ? t('Cargando…') : t('Cargar modelos')}
-        </button>
-      </div>
-      {models && (
-        <select
-          className="input w-full"
-          value={settings.embeddingModel}
-          onChange={(e) => onEmbeddingChange(provider, e.target.value)}
-        >
-          {!shown.some((m) => m.id === settings.embeddingModel) && (
-            <option value={settings.embeddingModel}>{settings.embeddingModel}</option>
-          )}
-          {shown.map((m) => (
-            <option key={m.id} value={m.id}>
-              {m.name ? `${m.name} · ${m.id}` : m.id}
-            </option>
-          ))}
-        </select>
-      )}
-      {error && <div className="text-xs text-red-400">{error}</div>}
-      <p className="text-xs text-neutral-500">
-        {t('OpenRouter acepta IDs como baai/bge-m3; si escribes BAAI:bge-m3 se normaliza automáticamente.')}
-      </p>
-      <p className="rounded-lg border border-amber-900/60 bg-amber-950/20 px-3 py-2 text-xs leading-5 text-amber-200">
-        {t('Si cambias de modelo de embeddings, los vectores anteriores no servirán con el nuevo modelo y tendrás que reindexar.')}
-      </p>
-    </div>
-  );
-}
 
 /**
  * Versions a sync merge discarded, and the way back.
