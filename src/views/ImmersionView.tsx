@@ -1067,7 +1067,7 @@ function ImmersionComposerModal({
               <option value="es">Español</option>
               <option value="en">English</option>
             </select>
-            <ModelPicker settings={settings} value={model} onChange={onModel} compact />
+            <ModelPicker settings={settings} value={model} onChange={onModel} compact menu />
           </div>
 
           {error && (

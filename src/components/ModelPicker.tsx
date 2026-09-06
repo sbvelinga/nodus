@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { matchesModelSearch } from '@shared/modelSearch';
 import type { AppSettings, CodexReasoningEffort, ModelRef } from '@shared/types';
 import { isSubscriptionProvider } from '@shared/providers';
 import {
@@ -17,6 +18,7 @@ import { modelLabel, sameModel, sortModelRefs } from './ui';
 import { Icon } from './ui';
 import { t, tx } from '../i18n';
 import './modelPicker.css';
+import { useModelPickerPopover } from './useModelPickerPopover';
 
 /**
  * Shown next to the pickers that drive high-volume work (scans, extraction, vision,
@@ -194,6 +196,7 @@ export function ModelWithReasoning({
   emptyLabel,
   requireExtraction = false,
   requiredCapability,
+  menu,
 }: {
   settings: AppSettings;
   value: ModelRef | null;
@@ -203,6 +206,7 @@ export function ModelWithReasoning({
   emptyLabel?: string;
   requireExtraction?: boolean;
   requiredCapability?: NodusLocalCapability;
+  menu?: boolean;
 }) {
   return (
     <div className="flex w-full min-w-0 flex-wrap items-center gap-2">
@@ -216,6 +220,7 @@ export function ModelWithReasoning({
         emptyLabel={emptyLabel}
         requireExtraction={requireExtraction}
         requiredCapability={requiredCapability}
+        menu={menu}
       />
       <ReasoningPicker settings={settings} model={value} onChange={onChange} compact={compact} />
     </div>
@@ -236,7 +241,7 @@ export function ModelPicker({
   disabled,
   emptyLabel,
   allowEmpty = true,
-  menu = false,
+  menu = true,
   requireExtraction = false,
   requiredCapability,
   triggerModelOnly = false,
@@ -271,6 +276,11 @@ export function ModelPicker({
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const searchRef = useRef<HTMLInputElement | null>(null);
   const optionsRef = useRef<HTMLDivElement | null>(null);
+  const popupRef = useRef<HTMLDivElement | null>(null);
+  useModelPickerPopover(open && menu && !disabled, popupRef, triggerRef);
+  useEffect(() => {
+    if (disabled) { setOpen(false); setQuery(''); }
+  }, [disabled]);
   useEffect(() => {
     if (!open) return;
     const close = (event: MouseEvent) => {
@@ -286,9 +296,9 @@ export function ModelPicker({
   if (menu) {
     const models = value && !valueIsFavorite ? [value, ...favorites] : favorites;
     const normalizedQuery = query.trim().toLocaleLowerCase();
-    const filteredModels = models.filter((model) => optionText(model).toLocaleLowerCase().includes(normalizedQuery));
+    const filteredModels = models.filter((model) => matchesModelSearch(`${model.provider} ${model.model} ${optionText(model)}`, query));
     const emptyOptionLabel = emptyLabel ? t(emptyLabel) : t('Sin modelo seleccionado');
-    const showEmptyOption = allowEmpty && (!normalizedQuery || emptyOptionLabel.toLocaleLowerCase().includes(normalizedQuery));
+    const showEmptyOption = allowEmpty && matchesModelSearch(emptyOptionLabel, query);
     const choose = (model: ModelRef | null) => {
       onChange(model);
       setOpen(false);
@@ -306,11 +316,13 @@ export function ModelPicker({
     const currentLabel = value ? modelLabel(value) : emptyLabel ? t(emptyLabel) : t('Sin modelo seleccionado');
     const closeAndRestoreFocus = () => { setOpen(false); setQuery(''); triggerRef.current?.focus(); };
     const openAndFocusSearch = () => {
+      if (disabled) return;
       setOpen(true);
-      window.setTimeout(() => searchRef.current?.focus());
     };
-    return <div ref={rootRef} className={`model-picker-menu${compact ? ' compact' : ''} ${className}`} onKeyDown={(event) => {
-      if (event.key === 'Escape' && open) { event.preventDefault(); closeAndRestoreFocus(); }
+    return <div ref={rootRef} className={`model-picker-menu${compact ? ' compact' : ''} ${className}`} onBlur={(event) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node)) { setOpen(false); setQuery(''); }
+    }} onKeyDown={(event) => {
+      if (event.key === 'Escape' && open) { event.preventDefault(); event.stopPropagation(); closeAndRestoreFocus(); }
       if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
         event.preventDefault();
         if (!open) {
@@ -327,7 +339,7 @@ export function ModelPicker({
       }} title={currentLabel}>
         <span>{value ? (triggerModelOnly ? value.model : currentLabel) : currentLabel}</span><Icon name="chevronDown" size={14} />
       </button>
-      {open && <div className="model-picker-options">
+      {open && !disabled && <div ref={popupRef} className="model-picker-options">
         <label className="model-picker-search">
           <Icon name="search" size={13} />
           <input
@@ -337,8 +349,10 @@ export function ModelPicker({
             onChange={(event) => setQuery(event.target.value)}
             onKeyDown={(event) => {
               if (event.key === 'Enter') {
+                event.preventDefault();
                 const firstAvailable = filteredModels.find((model) => !blocked(model));
-                if (firstAvailable) { event.preventDefault(); choose(firstAvailable); }
+                if (firstAvailable) choose(firstAvailable);
+                else if (showEmptyOption) choose(null);
               }
             }}
             placeholder={t('Buscar modelo…')}
@@ -348,7 +362,7 @@ export function ModelPicker({
         </label>
         <div ref={optionsRef} className="model-picker-list" role="listbox" aria-label={ariaLabel}>
           {showEmptyOption && <button type="button" role="option" aria-selected={!value} className={!value ? 'selected' : ''} onClick={() => choose(null)}>{emptyOptionLabel}</button>}
-          {filteredModels.map((model) => <button type="button" role="option" aria-selected={sameModel(model, value)} disabled={blocked(model)} title={blocked(model) ? t('Este modelo no puede usarse para extracción de ideas.') : undefined} className={sameModel(model, value) ? 'selected' : ''} key={serialize(model)} onClick={() => { if (!blocked(model)) choose(model); }}><span>{optionText(model)}</span>{sameModel(model, value) && <Icon name="check" size={13} />}</button>)}
+          {filteredModels.map((model) => <button type="button" role="option" aria-selected={sameModel(model, value)} disabled={blocked(model)} title={blocked(model) ? optionText(model) : undefined} className={sameModel(model, value) ? 'selected' : ''} key={serialize(model)} onClick={() => { if (!blocked(model)) choose(model); }}><span>{optionText(model)}</span>{sameModel(model, value) && <Icon name="check" size={13} />}</button>)}
           {!normalizedQuery && !models.length && !allowEmpty && <span className="model-picker-empty">{t('No hay modelos favoritos configurados.')}</span>}
           {normalizedQuery && !filteredModels.length && !showEmptyOption && <span className="model-picker-empty">{tx('Ningún modelo coincide con «{query}».', { query: query.trim() })}</span>}
         </div>
