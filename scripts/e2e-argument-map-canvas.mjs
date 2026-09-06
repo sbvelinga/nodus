@@ -10,6 +10,23 @@ fs.mkdirSync(root+'/output/argument-map',{recursive:true});
 const app=await electron.launch({executablePath:require('electron'),args:[root],env});
 try{
  const page=await app.firstWindow();page.setDefaultTimeout(60000);const errors=[];page.on('pageerror',e=>errors.push(String(e)));
+ // macOS changes Spaces asynchronously. DOM fullscreenchange fires before the
+ // native transition finishes; another request during that transition may fail.
+ await app.evaluate(({BrowserWindow})=>{
+  const win=BrowserWindow.getAllWindows()[0];
+  win.argumentFullscreenTransitions={entered:0,left:0};
+  win.on('enter-full-screen',()=>win.argumentFullscreenTransitions.entered++);
+  win.on('leave-full-screen',()=>win.argumentFullscreenTransitions.left++);
+ });
+ const waitForNativeFullscreen=async(event,count)=>{
+  if(process.platform!=='darwin') return;
+  const deadline=Date.now()+30000;
+  while(Date.now()<deadline){
+   if(await app.evaluate(({BrowserWindow},{event,count})=>BrowserWindow.getAllWindows()[0].argumentFullscreenTransitions[event]>=count,{event,count})) return;
+   await new Promise(resolve=>setTimeout(resolve,100));
+  }
+  throw new Error(`Native fullscreen transition ${event} ${count} did not finish`);
+ };
  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].setContentSize(1600,1050));
  await page.waitForFunction(()=>typeof window.nodus?.updateSettings==='function');
  await page.evaluate(async()=>{sessionStorage.setItem('nodus.startupUpdateChecked','1');localStorage.setItem('nodus.lastSeenVersion','5.1.7');localStorage.setItem('nodus.mobileTeaserSeen.5.1.7','1');for(const key of ['nodus.platformHighlightsSeen.2026-07','nodus.tutorialVideosAnnouncementSeen.2026-07','nodus.toolkitBetaGuideSeen.2.4.0'])localStorage.setItem(key,'1');await window.nodus.updateSettings({onboardingComplete:true,basicsTutorialVersion:999,recoverySetupVersion:999,tourComplete:true,advancedTourComplete:true,mascotEnabled:false,mascotStyle:'orb',mascotStyleChosen:true,uiLanguage:'es',theme:'dark'});await window.nodus.seedDemoData();});
@@ -88,10 +105,19 @@ try{
  assert.notEqual(await page.locator('.graph-detail-panel').evaluate(el=>getComputedStyle(el).userSelect),'none');
  const normalHeight=await stage.evaluate(el=>el.getBoundingClientRect().height);
  for(const theme of ['dark','light']) {
+  console.log(`[argument-map] entering fullscreen (${theme})`);
+  const transition=theme==='dark'?1:2;
+  await app.evaluate(({BrowserWindow})=>BrowserWindow.getAllWindows()[0].focus());
+  await page.waitForFunction(()=>document.hasFocus());
   await page.evaluate(theme=>{document.documentElement.classList.remove('dark','light');document.documentElement.classList.add(theme);},theme);
   await page.getByRole('button',{name:'Pantalla completa',exact:true}).click();
-  await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('argument-map-tab'));
-  await page.waitForTimeout(700);
+  try {
+   await page.waitForFunction(()=>document.fullscreenElement?.classList.contains('argument-map-tab'));
+  } catch(error) {
+   console.error('[argument-map] fullscreen diagnostics',await page.evaluate(()=>({focused:document.hasFocus(),fullscreen:document.fullscreenElement?.className,error:document.body.textContent.includes('No se pudo activar la pantalla completa.')})),await app.evaluate(({BrowserWindow})=>{const win=BrowserWindow.getAllWindows()[0];return {focused:win.isFocused(),fullscreen:win.isFullScreen()};}));
+   throw error;
+  }
+  await waitForNativeFullscreen('entered',transition);
   const geometry=await page.locator('.argument-map-tab').evaluate(el=>{const rect=el.getBoundingClientRect();return {width:rect.width,height:rect.height,viewportWidth:innerWidth,viewportHeight:innerHeight};});
   assert.ok(Math.abs(geometry.width-geometry.viewportWidth)<2 && Math.abs(geometry.height-geometry.viewportHeight)<2,'workspace fills the screen');
   assert.ok(await stage.evaluate(el=>el.getBoundingClientRect().height)>normalHeight,'fullscreen gives the canvas more space');
@@ -104,7 +130,7 @@ try{
   if(theme==='dark') await page.getByRole('button',{name:'Salir de pantalla completa',exact:true}).click();
   else await page.keyboard.press('Escape');
   await page.waitForFunction(()=>!document.fullscreenElement);
-  await page.waitForTimeout(500);
+  await waitForNativeFullscreen('left',transition);
   assert.equal(await page.locator('.argument-atlas-heading').isVisible(),true,'exit restores the overview');
   assert.equal(await page.locator('.argument-node').count(),initialCount,'fullscreen preserves branches');
  }
