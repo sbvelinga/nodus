@@ -1,4 +1,5 @@
 import type { AiProvider, EmbeddingProvider, ModelInfo, ModelRef } from './types';
+import { matchesModelSearch } from './modelSearch';
 import { AI_PROVIDERS, EMBEDDING_PROVIDERS, PROVIDER_LABELS, SECRET_PROVIDERS, isLocalProvider } from './providers';
 
 // Pure helpers behind the setup wizard's provider step. The wizard asks the user
@@ -91,12 +92,9 @@ export function toModelChoices(provider: AiProvider, models: ModelInfo[]): Model
  *  the model id, its name, or its provider — so "claude opus" and "openai embed"
  *  both narrow the list the way a user expects. */
 export function filterModelChoices(choices: ModelChoice[], query: string): ModelChoice[] {
-  const terms = query.toLowerCase().split(/\s+/).filter(Boolean);
-  if (!terms.length) return choices;
-  return choices.filter((choice) => {
-    const haystack = `${choice.model} ${choice.label} ${choice.providerLabel} ${choice.provider} ${choice.group ?? ''}`.toLowerCase();
-    return terms.every((term) => haystack.includes(term));
-  });
+  return choices.filter((choice) => matchesModelSearch(
+    `${choice.model} ${choice.label} ${choice.providerLabel} ${choice.provider} ${choice.group ?? ''}`, query,
+  ));
 }
 
 export function findChoice(choices: ModelChoice[], ref: ModelRef | null): ModelChoice | null {

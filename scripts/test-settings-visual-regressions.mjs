@@ -38,9 +38,8 @@ assert.equal((settings.match(/className=\{ABOUT_ACTION_BUTTON_CLASS\}/g) ?? []).
 assert.match(settings, /data-testid="open-latest-changes"[\s\S]*onClick=\{onOpenWhatsNew\}/);
 
 const nodiOverride = settings.match(/<Row label=\{t\('Asistente Nodi'\)\}[^>]*>(.*?)<\/Row>/s)?.[1] ?? '';
-// ModelWithReasoning is the native picker plus its reasoning level; every adjacent
-// advanced field uses it, so naming it here still pins Nodi to the same control.
+// Nodi uses the same searchable model control and reasoning level as adjacent roles.
 assert.match(nodiOverride, /<ModelWithReasoning/);
-assert.equal(/\bmenu\b/.test(nodiOverride), false, 'the Nodi override must use the same native-size picker as adjacent advanced fields');
+assert.equal(/\bmenu\b/.test(nodiOverride), true, 'the Nodi override must use the shared searchable picker');
 
 console.log('settings visual regression checks passed');

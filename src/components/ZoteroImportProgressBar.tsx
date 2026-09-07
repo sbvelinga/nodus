@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import type { ZoteroImportProgress } from '@shared/libraryTypes';
 import { Icon } from './ui';
@@ -30,25 +29,10 @@ const FINISHED: ZoteroImportProgress['phase'][] = ['complete', 'canceled', 'fail
  * screen saying so, a healthy import in progress is indistinguishable from a broken
  * one. This bar is that missing readout, and it counts files, not just records.
  */
-export function ZoteroImportProgressBar() {
-  const [progress, setProgress] = useState<ZoteroImportProgress | null>(null);
-  const [dismissed, setDismissed] = useState<string | null>(null);
-
-  useEffect(() => {
-    // A session is only worth restoring while it is genuinely alive: the import dies
-    // with the process, so a "running" session left behind by a crash must not put a
-    // frozen bar on screen for the rest of the session.
-    void window.nodus.listZoteroSyncSessions().then((sessions) => {
-      const live = sessions.find((session) => session.status === 'running'
-        && Date.now() - Date.parse(session.updatedAt) < 60_000);
-      if (live) setProgress((current) => current ?? live.progress);
-    }).catch(() => undefined);
-    return window.nodus.onZoteroImportProgress(setProgress);
-  }, []);
-
+export function ZoteroImportProgressBar({ progress, onDismiss }: { progress: ZoteroImportProgress | null; onDismiss: () => void }) {
   const live = Boolean(progress && !FINISHED.includes(progress.phase));
   const now = useElapsedClock(live);
-  if (!progress || dismissed === progress.requestId) return null;
+  if (!progress) return null;
 
   const { phase, percent, libraryName, message, processedItems, totalItems, processedAttachments, totalAttachments } = progress;
   const done = FINISHED.includes(phase);
@@ -58,17 +42,17 @@ export function ZoteroImportProgressBar() {
   const itemElapsed = elapsedTimeLabel(progress.currentItemStartedAt, null, now);
 
   return (
-    <div className="border-t border-neutral-200 bg-neutral-100/80 px-4 py-2 text-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/80">
-      <div className="flex items-center gap-3">
-        <span className="whitespace-nowrap text-xs font-medium text-amber-500">Zotero</span>
-        <div className="min-w-0 flex-1">
-          <div className="mb-1 flex justify-between gap-4 text-xs text-neutral-400">
-            <span className="min-w-0 truncate">
+    <div className="border-t border-neutral-200 bg-neutral-100/80 px-4 py-2 text-sm backdrop-blur dark:border-neutral-800 dark:bg-neutral-900/80" data-testid="zotero-progress-bar">
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="mr-auto whitespace-nowrap text-xs font-medium text-amber-500">Zotero</span>
+        <div className="order-last min-w-0 basis-full">
+          <div className="mb-1 flex flex-col gap-2 text-xs text-neutral-400">
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
               <span className={failed ? 'text-red-400' : done ? 'text-emerald-400' : 'text-neutral-200'}>{t(PHASE_LABEL[phase])}</span>
               {libraryName && <span className="ml-1 text-neutral-500">· {libraryName}</span>}
               {!done && message && <span className="ml-1 text-neutral-600">· {tr(message)}</span>}
             </span>
-            <span className="flex shrink-0 items-center gap-3 tabular-nums">
+            <span className="flex flex-wrap items-center gap-x-3 gap-y-1 tabular-nums">
               {/* Both counters, always: the catalogue finishing is not the import
                   finishing, and the file count is the half users were missing. */}
               <span>{t('Documentos')} {processedItems.toLocaleString()}/{totalItems.toLocaleString()}</span>
@@ -108,7 +92,7 @@ export function ZoteroImportProgressBar() {
             className={`btn btn-ghost ${failed ? 'text-amber-400' : cancelled ? 'text-neutral-400' : 'text-emerald-400'}`}
             title={t('Ocultar la importación terminada')}
             aria-label={t('Ocultar la importación terminada')}
-            onClick={() => setDismissed(progress.requestId)}
+            onClick={onDismiss}
           >
             <Icon name={failed ? 'warning' : cancelled ? 'x' : 'check'} size={17} />
           </button>

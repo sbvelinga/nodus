@@ -1,4 +1,4 @@
-import type { UpdateCheckResponse } from '@shared/types';
+import type { UpdateCheckResponse, UpdateProgressEvent } from '@shared/types';
 import { t, tx } from './i18n';
 
 /**
@@ -7,8 +7,8 @@ import { t, tx } from './i18n';
  * The main process cannot call `t()` (the active language lives in the
  * renderer), so every `UpdateCheckResponse.message` it emits is Spanish source
  * text. The response is structured, though, so the renderer re-derives the
- * sentence from `status`/`version`/`progress` and only falls back to the raw
- * `message` for `error`, where it carries the underlying failure text.
+ * sentence from structured status and error codes. Provider/native errors stay
+ * in the main-process log instead of leaking untranslated diagnostics to the UI.
  */
 export function updateStatusMessage(update: UpdateCheckResponse): string {
   const version = update.version || '';
@@ -22,7 +22,7 @@ export function updateStatusMessage(update: UpdateCheckResponse): string {
         percent: Math.round(Math.max(0, Math.min(100, update.progress ?? 0))),
       });
     case 'downloaded':
-      return tx('Actualización {version} descargada. Reiniciando para instalarla…', { version });
+      return tx('Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.', { version });
     case 'backing-up':
       return t('Creando y verificando una copia de seguridad antes de actualizar…');
     case 'installing':
@@ -38,8 +38,34 @@ export function updateStatusMessage(update: UpdateCheckResponse): string {
       if (update.errorCode === 'pre-update-backup-failed') {
         return t('La beta no se instaló porque no pudo crearse y verificarse la copia de seguridad previa. Tus datos no se han modificado.');
       }
-      return update.message || t('No se pudo comprobar si hay actualizaciones.');
+      if (update.errorCode === 'update-install-failed') return t('No se pudo instalar la actualización. Puedes volver a intentarlo.');
+      if (update.errorCode === 'update-install-incomplete') return t('La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.');
+      if (update.errorCode === 'update-download-failed') return t('No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.');
+      return t('No se pudo comprobar si hay actualizaciones.');
     default:
       return update.message;
+  }
+}
+
+export function pendingUpdateVersion(update: UpdateCheckResponse | null): string | null {
+  return update?.downloadedVersion ?? (update?.status === 'downloaded' ? update.version ?? null : null);
+}
+
+export function updateInstallBusy(update: UpdateCheckResponse | null): boolean {
+  return update?.status === 'backing-up' || update?.status === 'installing';
+}
+
+export function canInstallUpdate(update: UpdateCheckResponse | null): boolean {
+  return Boolean(pendingUpdateVersion(update)) && !updateInstallBusy(update);
+}
+
+/** All entry points retain the downloaded candidate after an IPC/install failure. */
+export async function installUpdateManually(update: UpdateCheckResponse | null): Promise<UpdateProgressEvent> {
+  try {
+    const result = await window.nodus.installUpdate();
+    return { ...result, at: new Date().toISOString() };
+  } catch {
+    return { status: 'error', errorCode: 'update-install-failed', message: '',
+      downloadedVersion: pendingUpdateVersion(update), version: update?.version, at: new Date().toISOString() };
   }
 }

@@ -3,6 +3,8 @@ import type { ModelRef } from '@shared/types';
 import { choiceKey, filterModelChoices, findChoice, refKey, type ModelChoice } from '@shared/onboardingModels';
 import { t, tx } from '../i18n';
 import { Icon } from './ui';
+import { useModelPickerPopover } from './useModelPickerPopover';
+import './modelPicker.css';
 
 /**
  * Model dropdown with a searchbox. Provider listings run to hundreds of entries
@@ -38,6 +40,9 @@ export function SearchableModelSelect({
   const [active, setActive] = useState(0);
   const rootRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const popupRef = useRef<HTMLDivElement>(null);
+  useModelPickerPopover(open && !disabled && !loading, popupRef, triggerRef);
   const selected = findChoice(choices, value);
   const filtered = useMemo(() => filterModelChoices(choices, query), [choices, query]);
 
@@ -67,6 +72,7 @@ export function SearchableModelSelect({
   const choose = (choice: ModelChoice) => {
     onChange({ provider: choice.provider, model: choice.model });
     setOpen(false);
+    triggerRef.current?.focus();
   };
 
   const onKeyDown = (event: React.KeyboardEvent) => {
@@ -86,13 +92,16 @@ export function SearchableModelSelect({
     }
     if (event.key === 'Escape') {
       event.preventDefault();
+      event.stopPropagation();
       setOpen(false);
+      triggerRef.current?.focus();
     }
   };
 
   return (
     <div className="relative" ref={rootRef} data-testid={testId}>
       <button
+        ref={triggerRef}
         type="button"
         className="input flex w-full items-center justify-between gap-2 text-left"
         data-testid={`${testId}-trigger`}
@@ -122,8 +131,8 @@ export function SearchableModelSelect({
         <Icon name={loading ? 'sync' : 'chevronDown'} size={14} className={loading ? 'animate-spin' : ''} />
       </button>
 
-      {open && (
-        <div className="absolute left-0 right-0 z-30 mt-1 overflow-hidden rounded-lg border border-neutral-300 bg-white shadow-xl dark:border-neutral-700 dark:bg-neutral-950">
+      {open && !disabled && !loading && (
+        <div ref={popupRef} className="model-picker-options">
           <div className="relative border-b border-neutral-200 p-2 dark:border-neutral-800">
             <Icon name="search" size={13} className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-neutral-500" />
             <input
@@ -132,6 +141,7 @@ export function SearchableModelSelect({
               autoFocus
               value={query}
               placeholder={t('Buscar modelo…')}
+              aria-label={t('Buscar modelo…')}
               onChange={(event) => {
                 setQuery(event.target.value);
                 setActive(0);
@@ -139,7 +149,7 @@ export function SearchableModelSelect({
               onKeyDown={onKeyDown}
             />
           </div>
-          <div className="max-h-60 overflow-y-auto" role="listbox" aria-label={label} ref={listRef}>
+          <div className="min-h-0 max-h-60 overflow-y-auto" role="listbox" aria-label={label} ref={listRef}>
             {filtered.map((choice, index) => {
               const note = noteFor?.(choice);
               const isSelected = choiceKey(choice) === refKey(value);

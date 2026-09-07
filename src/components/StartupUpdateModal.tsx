@@ -1,6 +1,7 @@
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import type { AppSettings, UpdateCheckResponse, UpdateCheckStatus, UpdateErrorCode, VaultType } from '@shared/types';
 import { t } from '../i18n';
+import { canInstallUpdate, installUpdateManually, pendingUpdateVersion, updateStatusMessage } from '../updateStatus';
 import { Icon } from './ui';
 import { type NodiState } from './nodi/Nodi';
 import { NodiAvatar } from './nodi/NodiAvatar';
@@ -46,7 +47,7 @@ function presentationFor(status: UpdateCheckStatus, version?: string, errorCode?
     case 'downloaded':
       return {
         title: t('Actualización lista'),
-        description: t('Nodus se reiniciará para completar la instalación.'),
+        description: t('Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.'),
         icon: 'refresh',
         nodiState: 'celebrating',
         tone: 'success',
@@ -163,13 +164,16 @@ export function StartupUpdateModal({
   settings,
   activeVaultType,
   onSettled,
+  onDefer,
 }: {
   settings: AppSettings;
   activeVaultType: VaultType | null;
   onSettled?: () => void;
+  onDefer?: (version: string) => void;
 }) {
   const [shouldShow] = useState(shouldShowThisSession);
   const [open, setOpen] = useState(false);
+  const [requestingInstall, setRequestingInstall] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [update, setUpdate] = useState<UpdateCheckResponse>({
     status: 'checking',
@@ -254,11 +258,13 @@ export function StartupUpdateModal({
     ? Math.max(0, Math.min(100, update.progress ?? 0))
     : update.status === 'downloaded' || update.status === 'installing' ? 100 : null;
   const canRetry = update.status === 'error';
-  const canInstall = update.status === 'downloaded';
+  const canInstall = canInstallUpdate(update);
 
   if (!open || !shouldShow) return null;
 
   const close = () => {
+    const pending = pendingUpdateVersion(update);
+    if (pending) onDefer?.(`${pending}${update.errorCode ?? ''}`);
     setOpen(false);
     onSettled?.();
   };
@@ -269,8 +275,11 @@ export function StartupUpdateModal({
   };
 
   const install = async () => {
-    const result = await window.nodus.installUpdate();
+    if (requestingInstall) return;
+    setRequestingInstall(true);
+    const result = await installUpdateManually(update);
     queueVisibleUpdate(result);
+    setRequestingInstall(false);
   };
 
   return (
@@ -313,7 +322,7 @@ export function StartupUpdateModal({
             </span>
             <div className="min-w-0 flex-1">
               <h3 id="startup-update-title">{presentation.title}</h3>
-              <p>{presentation.description}</p>
+              <p>{update.status === 'error' ? updateStatusMessage(update) : presentation.description}</p>
             </div>
           </div>
 
@@ -334,7 +343,7 @@ export function StartupUpdateModal({
 
         <footer className="startup-update-footer">
           {canRetry && <button className="startup-update-secondary" onClick={retry}><Icon name="refresh" size={14} /> {t('Comprobar de nuevo')}</button>}
-          {canInstall && <button className="startup-update-primary" onClick={() => void install()}><Icon name="refresh" size={14} /> {t('Reiniciar')}</button>}
+          {canInstall && <><button className="startup-update-secondary" onClick={close} disabled={requestingInstall}>{t('Más tarde')}</button><button className="startup-update-primary" onClick={() => void install()} disabled={requestingInstall}><Icon name="refresh" size={14} /> {t('Instalar y reiniciar')}</button></>}
           {!canInstall && <button className="startup-update-primary" onClick={close}>{update.status === 'downloading' || update.status === 'available' ? t('Continuar en segundo plano') : t('¡Entendido!')} <Icon name="chevronRight" size={14} /></button>}
         </footer>
       </section>

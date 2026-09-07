@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { embeddingVisible } from '../queueActivity';
 import { motion } from 'framer-motion';
 import type { EmbeddingPipelineProgress } from '@shared/types';
 import { Icon } from './ui';
@@ -6,16 +6,11 @@ import { t, tr, tx } from '../i18n';
 import { elapsedTimeLabel } from '@shared/elapsedTime';
 import { useElapsedClock } from '../useElapsedClock';
 
-export function EmbeddingProgressBar() {
-  const [progress, setProgress] = useState<EmbeddingPipelineProgress | null>(null);
+export function EmbeddingProgressBar({ progress }: { progress: EmbeddingPipelineProgress | null }) {
 
-  useEffect(() => {
-    void window.nodus.getEmbeddingStatus().then(setProgress);
-    return window.nodus.onEmbeddingProgress(setProgress);
-  }, []);
 
   const now = useElapsedClock(Boolean(progress && (progress.running || progress.paused)));
-  if (!progress || (!progress.running && progress.totalIdeas === 0 && !progress.error)) return null;
+  if (!progress || !embeddingVisible(progress)) return null;
 
   const {
     running, paused, cancelled, startedAt, finishedAt, currentWorkStartedAt, currentWorkFinishedAt,
@@ -28,17 +23,17 @@ export function EmbeddingProgressBar() {
   const workElapsed = elapsedTimeLabel(currentWorkStartedAt, currentWorkFinishedAt, now);
 
   return (
-    <div className="border-t border-neutral-200 bg-neutral-100/80 backdrop-blur px-4 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/80">
+    <div className="border-t border-neutral-200 bg-neutral-100/80 backdrop-blur px-4 py-2 text-sm dark:border-neutral-800 dark:bg-neutral-900/80" data-testid="embeddings-progress-bar">
       {error && (
         <div className="mb-2 flex items-center gap-2 rounded-lg bg-red-50 border border-red-200 px-3 py-1.5 text-red-700 text-xs dark:bg-red-950/60 dark:border-red-800/60 dark:text-red-300">
           <span>{t('Error')}: {tr(error)}</span>
         </div>
       )}
-      <div className="flex items-center gap-3">
-        <span className="text-xs text-cyan-400 font-medium whitespace-nowrap">Embeddings</span>
-        <div className="flex-1">
-          <div className="flex justify-between text-xs text-neutral-400 mb-1">
-            <span>
+      <div className="flex flex-wrap items-center gap-3">
+        <span className="mr-auto text-xs text-cyan-400 font-medium whitespace-nowrap">Embeddings</span>
+        <div className="order-last min-w-0 basis-full">
+          <div className="flex flex-wrap justify-between gap-2 text-xs text-neutral-400 mb-1">
+            <span className="min-w-0 break-words [overflow-wrap:anywhere]">
               {active ? (
                 <>
                   {currentWorkTitle ? (

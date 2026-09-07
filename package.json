@@ -1,6 +1,6 @@
 {
   "name": "nodus",
-  "version": "5.1.7",
+  "version": "5.2.1",
   "description": "Local-first desktop app that turns a Zotero library into a navigable graph of ideas and authors.",
   "author": {
     "name": "Jorge Pérez Burgueño",
@@ -13,7 +13,7 @@
     "url": "https://github.com/Drakonis96/nodus.git"
   },
   "releaseMetadata": {
-    "dateReleased": "2026-09-04",
+    "dateReleased": "2026-09-06",
     "conceptDoi": "10.5281/zenodo.21515531",
     "versionDoi": null
   },
@@ -42,6 +42,9 @@
     "release:verify-source": "node scripts/verify-source-offer.mjs",
     "version": "npm run citation:sync && git add CITATION.cff",
     "test:e2e": "node scripts/e2e-smoke.mjs",
+    "test:e2e:stellar": "node scripts/e2e-graph-progressive.mjs",
+    "test:e2e:stellar-tabs": "node scripts/e2e-stellar-tabs.mjs",
+    "test:e2e:argument-map": "node scripts/e2e-argument-map-canvas.mjs",
     "audit:adaptive:prepare": "node scripts/adaptive-concurrency-audit.mjs prepare",
     "audit:adaptive:verify": "node scripts/adaptive-concurrency-audit.mjs verify",
     "audit:adaptive:campaign": "node scripts/run-adaptive-concurrency-campaign.mjs",
@@ -98,6 +101,7 @@
     "verify:study-whisper": "node scripts/verify-study-whisper.mjs",
     "verify:study-improve-local": "node scripts/verify-study-improve-local.mjs",
     "verify:database-records": "node scripts/verify-database-records.mjs",
+    "verify:home-dashboard": "node scripts/verify-home-dashboard.mjs",
     "verify:gallery-virtualization": "node scripts/verify-gallery-virtualization.mjs",
     "verify:debates-payload": "node scripts/verify-debates-payload.mjs",
     "verify:single-instance": "node scripts/verify-single-instance.mjs",
@@ -172,7 +176,6 @@
     "electron-updater": "^6.8.9",
     "framer-motion": "^11.11.17",
     "graphology": "^0.26.0",
-    "graphology-communities-louvain": "^2.0.2",
     "graphology-layout-forceatlas2": "^0.10.1",
     "heic-decode": "^2.1.0",
     "jsonrepair": "^3.14.0",
@@ -181,7 +184,9 @@
     "leaflet": "^1.9.4",
     "mammoth": "^1.8.0",
     "mkcert": "^3.2.0",
+    "node-tikzjax": "^1.0.5",
     "openai": "^4.73.0",
+    "openchemlib": "^9.25.0",
     "pdf-lib": "^1.17.1",
     "pdfjs-dist": "^4.8.69",
     "qrcode": "^1.5.4",
@@ -309,6 +314,7 @@
     "afterPack": "build/afterPack.cjs",
     "asarUnpack": [
       "zotero-plugin/**/*",
+      "node_modules/node-tikzjax/**",
       "node_modules/@openai/codex-*/vendor/**/*",
       "node_modules/@github/copilot-*/**/*",
       "node_modules/heic-decode/**/*",

@@ -16,6 +16,7 @@ import {
   type VaultType,
 } from "@shared/vaultTypes";
 import type { AppLanguage } from "@shared/types";
+import type { StellarWorkspaceSnapshot } from "../stellarGraph/snapshot";
 import {
   dedicatedVaultNavIds,
   groupedNav,
@@ -1747,6 +1748,7 @@ function UnavailableView({ view }: { view: View }) {
 }
 
 export default function App() {
+  const graphSnapshot = useRef<{ spaceId: string; snapshot: StellarWorkspaceSnapshot }>();
   const [route, setRoute] = useState<Route>(routeFromLocation);
   const [me, setMe] = useState<MeResponse>();
   const [profile, setProfile] = useState<PortableProfileValues>();
@@ -1899,6 +1901,9 @@ export default function App() {
   );
   const type = normalizeVaultType(active?.vaultType || active?.vault?.type);
   const activeView = route.view;
+  useEffect(() => {
+    if (graphSnapshot.current?.spaceId !== active?.id) graphSnapshot.current = undefined;
+  }, [active?.id]);
   const primarySourcesLoader = useMemo(
     () =>
       active?.id && type === "primary_sources"
@@ -2342,6 +2347,8 @@ export default function App() {
           initialSeedId={
             new URLSearchParams(location.search).get("seed") || undefined
           }
+          snapshot={graphSnapshot.current?.spaceId === active.id ? graphSnapshot.current.snapshot : undefined}
+          onSnapshotChange={snapshot => { graphSnapshot.current = { spaceId: active.id, snapshot }; }}
           onOpenIdea={(id) =>
             navigate(`/detail/ideas/ideas/${encodeURIComponent(id)}`)
           }

@@ -38,7 +38,7 @@ test('the cinematic modal distinguishes current, available, progress and failure
   assert.match(modal, /Nueva actualización disponible/);
   assert.match(modal, /data-update-status=\{update\.status\}/);
   assert.match(modal, /data-testid="startup-update-progress"/);
-  assert.match(modal, /window\.nodus\.installUpdate\(\)/);
+  assert.match(modal, /installUpdateManually\(update\)/);
   assert.match(styles, /\.startup-update-backdrop/);
   assert.match(styles, /\.light \.startup-update-cinema/);
   assert.match(styles, /\.startup-update-status-success/);

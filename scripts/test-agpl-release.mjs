@@ -14,7 +14,7 @@ const json = async (relative) => JSON.parse(await read(relative));
 
 const AGPL_SHA256 = '0d96a4ff68ad6d4b6f1f30f713b18d5184912ba8dd389f86aa7710db079abcb0';
 const LICENSE_ID = 'AGPL-3.0-only';
-const VERSION = '5.1.7';
+const VERSION = '5.2.1';
 
 test('Nodus 5 carries the unmodified GNU AGPL v3 license text', async () => {
   const license = await read('LICENSE');
@@ -23,7 +23,7 @@ test('Nodus 5 carries the unmodified GNU AGPL v3 license text', async () => {
   assert.match(license, /13\. Remote Network Interaction/);
 });
 
-test('all first-party release metadata identifies 5.1.7 as AGPL-3.0-only', async () => {
+test('all first-party release metadata identifies 5.2.1 as AGPL-3.0-only', async () => {
   const [pkg, lock, serverPkg, plugin, citation] = await Promise.all([
     json('package.json'),
     json('package-lock.json'),
@@ -87,7 +87,9 @@ test('project licensing scope is machine-readable and historical MIT releases st
   assert.ok(exceptions.entries.length >= 4);
   assert.match(notices, /Versions through 3\.2\.7 remain\s+available under MIT/);
   assert.match(readme, /AGPL-3\.0-only/);
-  assert.match(contributing, /without an additional contributor license agreement/);
+  assert.match(contributing, /Contributions also require explicit acceptance/);
+  assert.match(contributing, /\[Nodus Research Contributor License Agreement\]\(CLA.md\)/);
+  assert.doesNotMatch(contributing, /without an additional contributor license agreement/);
   assert.match(privacy, /GNU Affero General Public License v3\.0 only/);
   assert.match(site, /AGPL-3\.0-only/);
   assert.doesNotMatch(site, /Nodus (?:is|es|est|è|ist|é).*\bMIT\b/);

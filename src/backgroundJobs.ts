@@ -39,12 +39,20 @@ export interface BackgroundJob<Request, Progress, Result> {
   finishedAt: string | null;
 }
 
-type AnyJob = BackgroundJob<unknown, unknown, unknown>;
+export type AnyJob = BackgroundJob<unknown, unknown, unknown>;
 type AnyListener = (job: AnyJob | null) => void;
 
 const jobs = new Map<string, AnyJob>();
 const listeners = new Map<string, Set<AnyListener>>();
 let jobSequence = 0;
+const allListeners = new Set<(jobs: AnyJob[]) => void>();
+
+/** Observe every renderer-owned job without taking ownership of its lifecycle. */
+export function subscribeBackgroundJobs(listener: (jobs: AnyJob[]) => void): () => void {
+  allListeners.add(listener);
+  listener([...jobs.values()]);
+  return () => { allListeners.delete(listener); };
+}
 
 function messageFromError(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
@@ -53,6 +61,7 @@ function messageFromError(error: unknown): string {
 function notify(key: string): void {
   const snapshot = jobs.get(key) ?? null;
   for (const listener of listeners.get(key) ?? []) listener(snapshot);
+  for (const listener of allListeners) listener([...jobs.values()]);
 }
 
 function replaceJob(job: AnyJob): void {

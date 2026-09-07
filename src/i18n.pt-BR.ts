@@ -1,3 +1,5 @@
+import { CHAT_SKILLS_TRANSLATIONS } from './i18n.chatSkills';
+import { STELLAR_GRAPH_TRANSLATIONS } from './i18n.stellarGraph';
 /**
  * pt-BR translations keyed by the Spanish source string (see {@link ./i18n}).
  * Key order mirrors {@link ./i18n.en} so the tables can be diffed side by side.
@@ -56,6 +58,8 @@ import { DATABASE_DEEP_RESEARCH_TRANSLATIONS } from './i18n.databaseDeepResearch
 import { ACADEMIC_TOUR_TRANSLATIONS } from './i18n.academicTour';
 
 export const PT_BR: Record<string, string> = {
+  ...CHAT_SKILLS_TRANSLATIONS['pt-BR'],
+  ...STELLAR_GRAPH_TRANSLATIONS["pt-BR"],
   ...ACADEMIC_TOUR_TRANSLATIONS['pt-BR'],
   ...ADAPTIVE_CONCURRENCY_TRANSLATIONS['pt-BR'],
   ...DATABASE_DEEP_RESEARCH_TRANSLATIONS['pt-BR'],
@@ -2115,6 +2119,12 @@ export const PT_BR: Record<string, string> = {
   'Corrígelo en Ajustes y pulsa': 'Corrija em Configurações e clique em',
   'Reanudar': 'Retomar',
   'Cola': 'Fila',
+  'Cola y tareas': 'Fila e tarefas',
+  "Limpiar terminadas": "Limpar concluídas",
+  "Limpiar tareas terminadas": "Limpar tarefas finalizadas",
+  "Se ocultarán de la cola las tareas completadas, canceladas o fallidas. Se conservarán las tareas en curso, pendientes o en pausa y los documentos generados.": "As tarefas concluídas, canceladas ou com falha serão ocultadas da fila. As tarefas em andamento, pendentes ou pausadas e os documentos gerados serão mantidos.",
+  "Extracción de texto": "Extração de texto",
+  'Sin tareas ni colas en curso.': 'Sem tarefas nem filas em andamento.',
   'Procesando:': 'Processando:',
   'Cola en pausa': 'Fila pausada',
   'En cola…': 'Na fila…',
@@ -8313,4 +8323,40 @@ export const PT_BR: Record<string, string> = {
   "Quitar modelo": "Remover modelo",
   "Ni el servidor publica modelos ni has escrito ninguno todavía.": "O servidor não publica modelos e você ainda não digitou nenhum.",
   "Este proveedor genera texto, no embeddings. Para la búsqueda semántica elige otro proveedor en Ajustes.": "Este provedor gera texto, não embeddings. Para a busca semântica escolha outro provedor nas Configurações.",
+  "Instalar y reiniciar": "Instalar e reiniciar",
+  "Más tarde": "Mais tarde",
+  "Actualización {version} lista. Puedes instalarla y reiniciar cuando quieras.": "A atualização {version} está pronta. Você pode instalá-la e reiniciar quando quiser.",
+  "Puedes seguir trabajando. Nodus solo se reiniciará cuando elijas instalar la actualización.": "Você pode continuar trabalhando. O Nodus só será reiniciado quando você escolher instalar a atualização.",
+  "No se pudo instalar la actualización. Puedes volver a intentarlo.": "Não foi possível instalar a atualização. Você pode tentar novamente.",
+  "La actualización anterior no llegó a instalarse. Busca actualizaciones para volver a intentarlo.": "A atualização anterior não foi instalada. Busque atualizações para tentar novamente.",
+  "No se pudo descargar la actualización. Comprueba tu conexión y vuelve a intentarlo.": "Não foi possível baixar a atualização. Verifique sua conexão e tente novamente.",
+
+  // Spatial argument map.
+  "CARTOGRAFÍA DEL ARGUMENTO": "CARTOGRAFIA DO ARGUMENTO",
+  "Todas las ramas": "Todos os ramos",
+  "IDEA CENTRAL": "IDEIA CENTRAL",
+  "SIGUE EL HILO": "SIGA O FIO",
+  "Despliega una rama. Contrasta sus ideas.": "Expanda um ramo. Compare suas ideias.",
+  "{n} ideas visibles": "{n} ideias visíveis",
+  "Relaciones respecto a la idea de origen": "Relações com a ideia de origem",
+  "Arrastra para explorar · Rueda para ampliar": "Arraste para explorar · Role para ampliar",
+  "Mapa visual": "Mapa visual",
+  "No se pudo activar la pantalla completa.": "Não foi possível ativar a tela cheia.",
+  "Zoom automático": "Zoom automático",
+  "Centrar y ampliar la tarjeta al seleccionarla": "Centralizar e ampliar o cartão selecionado",
+  "Vista anterior": "Vista anterior",
+  "Recuperar el encuadre anterior sin cerrar las ramas": "Restaurar a vista anterior sem recolher os ramos",
+  "AÑADE IDEAS AL LIENZO": "ADICIONE IDEIAS À TELA",
+  "Quitar idea del lienzo": "Remover ideia da tela",
+  "Añadir idea al lienzo": "Adicionar ideia à tela",
+  "Grafos abiertos": "Grafos abertos",
+  "Grafo {n}": "Grafo {n}",
+  "Cerrar grafo {n}": "Fechar grafo {n}",
+  "Nuevo grafo": "Novo grafo",
+  "{n} conexiones directas cargadas. Añade otra idea con +.": "{n} conexões diretas carregadas. Adicione outra ideia com +.",
+  "Lienzo vacío. Busca una idea para empezar.": "Tela vazia. Pesquise uma ideia para começar.",
+  "Idea retirada del lienzo.": "Ideia removida da tela.",
+  "Quitar todas las ideas y conexiones del lienzo": "Remover todas as ideias e conexões da tela",
+  "Relaciones por idea": "Relações por ideia",
+  "No se pudieron cargar todas las conexiones. Vuelve a intentarlo.": "Não foi possível carregar todas as conexões. Tente novamente.",
 };
